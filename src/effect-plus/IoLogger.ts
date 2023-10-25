@@ -6,7 +6,7 @@ import {
 	redString,
 	tabify,
 	yellowString
-} from '@mjljm/js-lib/strings';
+} from '@mjljm/js-lib/Strings';
 import { Console, Effect, Logger } from 'effect';
 
 export class LoggerError {

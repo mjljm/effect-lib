@@ -1,5 +1,5 @@
-import { FunctionPortError, GeneralError } from '@mjljm/effect-lib/errors';
-import { blueString, objectToString, tabify } from '@mjljm/js-lib/strings';
+import { FunctionPortError, GeneralError } from '@mjljm/effect-lib/Errors';
+import { blueString, objectToString, tabify } from '@mjljm/js-lib/Strings';
 import { Cause, pipe } from 'effect';
 
 const formatWithFunction =
