@@ -6,6 +6,7 @@
 		}
 	},
 	"devDependencies": {
+		"@effect/language-service": "0.0.21",
 		"@html-eslint/eslint-plugin": "0.20.0",
 		"@html-eslint/parser": "0.20.0",
 		"@tsconfig/node20": "20.1.2",
@@ -14,27 +15,27 @@
 		"@types/eslint-config-prettier": "6.11.2",
 		"@types/eslint__js": "8.42.2",
 		"@types/luxon": "3.3.3",
-		"@typescript-eslint/eslint-plugin": "^6.9.0",
-		"@typescript-eslint/parser": "^6.9.0",
-		"eslint": "^8.52.0",
+		"@typescript-eslint/eslint-plugin": "^6.9.1",
+		"@typescript-eslint/parser": "^6.9.1",
+		"eslint": "^8.53.0",
 		"eslint-config-prettier": "^9.0.0",
 		"eslint-plugin-markdown": "3.0.1",
 		"eslint-plugin-yml": "1.10.0",
 		"prettier": "3.0.3",
-		"terser": "^5.22.0",
+		"terser": "^5.24.0",
 		"typescript": "5.2.2",
 		"vite": "4.5.0"
 	},
 	"dependencies": {
-		"@effect/platform": "0.24.0",
-		"@effect/schema": "0.45.6",
+		"@effect/platform": "0.27.2",
+		"@effect/schema": "0.47.2",
+		"@effect/typeclass": "0.14.1",
 		"@mjljm/js-lib": "workspace:^",
-		"effect": "2.0.0-next.50",
-		"@effect/typeclass": "0.12.0",
+		"effect": "2.0.0-next.54",
 		"luxon": "3.4.3"
 	},
 	"type": "module",
-	"packageManager": "pnpm@8.9.2",
+	"packageManager": "pnpm@8.10.2",
 	"scripts": {
 		"build": "vite build"
 	}

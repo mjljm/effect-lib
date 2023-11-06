@@ -5,7 +5,12 @@
 		// "typescript.preferences.importModuleSpecifier": "non-relative",
 		"paths": {
 			"@mjljm/effect-lib/*": ["./src/*.ts"]
-		}
+		},
+		"plugins": [
+			{
+				"name": "@effect/language-service"
+			}
+		]
 	},
 	"include": [".*", "*", "src"]
 }
