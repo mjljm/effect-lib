@@ -58,12 +58,3 @@ const loopInternal = <A, B>(
 	cont(initial)
 		? List.prepend(loopInternal(step(initial), cont, step, body), body(initial))
 		: List.empty();
-
-export type Primitive = string | number | bigint | boolean | symbol | undefined | null;
-export const isPrimitive = (u: unknown): u is Primitive =>
-	u === null || typeof u in ['string', 'number', 'boolean', 'bigingt', 'symbol', 'undefined'];
-
-// Defines an object that is not null, not undefined, not an array (even empty), not a function and not a class
-export type AnyRecord = Record<string | symbol, unknown>;
-export const isAnyRecord = (u: unknown): u is AnyRecord =>
-	u !== null && typeof u === 'object' && !Array.isArray(u);

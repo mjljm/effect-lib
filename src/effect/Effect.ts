@@ -1,5 +1,5 @@
-import { format } from '@mjljm/effect-lib/effect-plus/Cause';
-import { PredicateEffect } from '@mjljm/effect-lib/effect-plus/Predicate';
+import { format } from '@mjljm/effect-lib/effect/Cause';
+import { PredicateEffect } from '@mjljm/effect-lib/effect/Predicate';
 import { FunctionPortError, GeneralError } from '@mjljm/effect-lib/Errors';
 import { Effect, List, pipe } from 'effect';
 
@@ -23,17 +23,14 @@ export const iterateFullEffect = <Z, R1, E1, R2, E2>(
 	}
 ): Effect.Effect<R1 | R2, E1 | E2, Z> =>
 	Effect.suspend(() =>
-		pipe(
-			options.while(initial),
-			Effect.flatMap((keepGoing) =>
-				keepGoing
-					? Effect.flatMap(options.body(initial), (z2) => iterateFullEffect(z2, options))
-					: Effect.succeed(initial)
-			)
-		)
+		Effect.gen(function* (_) {
+			return (yield* _(options.while(initial)))
+				? yield* _(iterateFullEffect(yield* _(options.body(initial)), options))
+				: initial;
+		})
 	);
 
-// @ts-expect-error Same error in core-effect.ts
+// @ts-expect-error Same error as in core-effect.ts
 export const loopFullEffect: {
 	<Z, R1, E1, R2, E2, R3, E3, A>(
 		initial: Z,
@@ -75,18 +72,14 @@ const loopInternal = <Z, R1, E1, R2, E2, R3, E3, A>(
 	body: (z: Z) => Effect.Effect<R3, E3, A>
 ): Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, List.List<A>> =>
 	Effect.suspend(() =>
-		pipe(
-			cont(initial),
-			Effect.flatMap((keepGoing) =>
-				keepGoing
-					? Effect.flatMap(body(initial), (a) =>
-							Effect.flatMap(inc(initial), (z) =>
-								Effect.map(loopInternal(z, cont, inc, body), List.prepend(a))
-							)
-					  )
-					: Effect.sync(() => List.empty())
-			)
-		)
+		Effect.gen(function* (_) {
+			return (yield* _(cont(initial)))
+				? List.prepend(
+						yield* _(loopInternal(yield* _(inc(initial)), cont, inc, body)),
+						yield* _(body(initial))
+				  )
+				: List.empty<A>();
+		})
 	);
 
 const loopDiscard = <Z, R1, E1, R2, E2, R3, E3, A>(
@@ -96,14 +89,10 @@ const loopDiscard = <Z, R1, E1, R2, E2, R3, E3, A>(
 	body: (z: Z) => Effect.Effect<R3, E3, A>
 ): Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, void> =>
 	Effect.suspend(() =>
-		pipe(
-			cont(initial),
-			Effect.flatMap((keepGoing) =>
-				keepGoing
-					? Effect.flatMap(body(initial), () =>
-							Effect.flatMap(inc(initial), (z) => loopDiscard(z, cont, inc, body))
-					  )
-					: Effect.unit
-			)
-		)
+		Effect.gen(function* (_) {
+			if (yield* _(cont(initial))) {
+				yield* _(body(initial));
+				yield* _(loopDiscard(yield* _(inc(initial)), cont, inc, body));
+			}
+		})
 	);
