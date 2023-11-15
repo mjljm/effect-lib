@@ -15,8 +15,8 @@
 		"@types/eslint-config-prettier": "6.11.3",
 		"@types/eslint__js": "8.42.3",
 		"@types/luxon": "3.3.4",
-		"@typescript-eslint/eslint-plugin": "^6.10.0",
-		"@typescript-eslint/parser": "^6.10.0",
+		"@typescript-eslint/eslint-plugin": "^6.11.0",
+		"@typescript-eslint/parser": "^6.11.0",
 		"eslint": "^8.53.0",
 		"eslint-config-prettier": "^9.0.0",
 		"eslint-plugin-markdown": "3.0.1",
@@ -27,7 +27,7 @@
 		"vite": "4.5.0"
 	},
 	"dependencies": {
-		"@effect/platform": "0.28.3",
+		"@effect/platform": "0.29.1",
 		"@effect/schema": "0.47.7",
 		"@effect/typeclass": "0.14.1",
 		"@mjljm/js-lib": "workspace:^",
