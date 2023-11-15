@@ -1,5 +1,5 @@
 import { AST, Schema } from '@effect/schema';
-import { EffectSchemaError } from '@mjljm/effect-lib/Errors';
+import { EffectSchemaError } from '@mjljm/effect-data-lib/Errors';
 import { isoToYyyymmdd, yyyymmdToIso } from '@mjljm/js-lib/Strings';
 import { Effect, Either, Option, ReadonlyArray, String, pipe } from 'effect';
 import { DateTime } from 'luxon';

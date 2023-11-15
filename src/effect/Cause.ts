@@ -1,6 +1,17 @@
-import { FunctionPortError, GeneralError } from '@mjljm/effect-lib/Errors';
-import { blueString, objectToString, tabify } from '@mjljm/js-lib/Strings';
+import { FunctionPortError, GeneralError } from '@mjljm/effect-data-lib/Errors';
+import * as PrettyPrint from '@mjljm/effect-pretty-print/index';
+import { blueString } from '@mjljm/js-lib/Strings';
 import { Cause, pipe } from 'effect';
+
+const _ = PrettyPrint._;
+
+const prettyPrintOptions: PrettyPrint.Options = {
+	stringOrSymbolProperties: 'both',
+	enumerableOrNonEnumarableProperties: 'both',
+	showInherited: true,
+	initialTab: _('  '),
+	noLineBreakIfShorterThan: 40
+};
 
 const formatWithFunction =
 	<E>(onFail: (error: E) => string) =>
