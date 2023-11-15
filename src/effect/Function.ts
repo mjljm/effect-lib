@@ -1,4 +1,4 @@
-import { Function, List, Predicate, ReadonlyArray } from 'effect';
+import { List, MutableList, Predicate } from 'effect';
 
 export const iterate: {
 	<A, B extends A>(
@@ -58,7 +58,7 @@ export const loop: {
 			readonly body: (c: C) => A;
 			readonly step: (c: C) => B;
 		}
-	): ReadonlyArray<A>;
+	): Array<A>;
 	<A, B>(
 		initial: B,
 		options: {
@@ -66,7 +66,7 @@ export const loop: {
 			readonly body: (b: B) => A;
 			readonly step: (b: B) => B;
 		}
-	): ReadonlyArray<A>;
+	): Array<A>;
 } = <A, B>(
 	initial: B,
 	options: {
@@ -74,7 +74,7 @@ export const loop: {
 		readonly body: (b: B) => A;
 		readonly step: (b: B) => B;
 	}
-): ReadonlyArray<A> => Array.from(loopInternal(initial, options.while, options.step, options.body));
+): Array<A> => Array.from(loopInternal(initial, options.while, options.step, options.body));
 
 const loopInternal = <A, B>(
 	initial: B,
@@ -94,7 +94,7 @@ export const loopNonRecursive: {
 			readonly body: (c: C) => A;
 			readonly step: (c: C) => B;
 		}
-	): ReadonlyArray<A>;
+	): Array<A>;
 	<A, B>(
 		initial: B,
 		options: {
@@ -102,7 +102,7 @@ export const loopNonRecursive: {
 			readonly body: (b: B) => A;
 			readonly step: (b: B) => B;
 		}
-	): ReadonlyArray<A>;
+	): Array<A>;
 } = <A, B>(
 	initial: B,
 	options: {
@@ -110,14 +110,14 @@ export const loopNonRecursive: {
 		readonly body: (b: B) => A;
 		readonly step: (b: B) => B;
 	}
-): ReadonlyArray<A> => {
+): Array<A> => {
 	let loop = initial;
-	const result = ReadonlyArray.empty<A>();
+	const result = MutableList.empty<A>();
 	while (options.while(loop)) {
-		ReadonlyArray.append(result, options.body(loop));
+		MutableList.append(result, options.body(loop));
 		loop = options.step(loop);
 	}
-	return result;
+	return Array.from(result);
 };
 
 type ObjectRecord = { [key: string | symbol]: unknown };
@@ -129,16 +129,22 @@ export { type AnyArray as Array };
 export type Primitive = string | number | bigint | boolean | symbol | undefined | null;
 //eslint-disable-next-line @typescript-eslint/ban-types
 export type Unknown = Primitive | Function | ObjectRecord | AnyArray;
-export type ArrayOrObject = ObjectRecord | AnyArray;
+export type RecordOrArray = ObjectRecord | AnyArray;
 
 export const isPrimitive = (u: unknown): u is Primitive =>
-	u === null || (typeof u) in ['string', 'number', 'boolean', 'bigingt', 'symbol', 'undefined'];
-export const isFunction = Function.isFunction;
-export const isArray = Array.isArray;
+	u === null ||
+	['string', 'number', 'boolean', 'bigingt', 'symbol', 'undefined'].includes(typeof u);
+export const isString = Predicate.isString;
+export const isNumber = Predicate.isNumber;
+export const isBigint = Predicate.isBigInt;
+export const isBoolean = Predicate.isBoolean;
+export const isSymbol = Predicate.isSymbol;
+export const isUndefined = Predicate.isUndefined;
+export const isNull = Predicate.isNull;
+export const isFunction = Predicate.isFunction;
 // Warning : isObjectRecord lets class instances through although thet don't satisfy ObjectRecord
 // But class instances do behave like ObjectRecords. So should be safe
-export const isObjectRecord = (input: unknown): input is ObjectRecord =>
-	input !== null && typeof input === 'object' && !isArray(input);
-export const isSymbol = (u: unknown): u is symbol => typeof u === 'symbol';
-export const isArrayOrObject = (u: unknown): u is ArrayOrObject =>
+export const isRecord = Predicate.isRecord;
+export const isArray = Array.isArray;
+export const isRecordOrArray = (u: unknown): u is RecordOrArray =>
 	u !== null && typeof u === 'object';
