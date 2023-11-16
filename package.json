@@ -31,7 +31,7 @@
 		"@mjljm/js-lib": "workspace:^",
 		"effect": "2.0.0-next.55",
 		"luxon": "3.4.4",
-		"@mjljm/effect-data-lib": "workspace:^",
+		"@mjljm/effect-lib": "workspace:^",
 		"@effect/schema": "0.48.0",
 		"@mjljm/effect-pretty-print": "workspace:^"
 	},

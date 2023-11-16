@@ -1,4 +1,4 @@
-import { FunctionPortError, GeneralError } from '@mjljm/effect-data-lib/Errors';
+import { FunctionPortError, GeneralError } from '@mjljm/effect-lib/Errors';
 import * as PrettyPrint from '@mjljm/effect-pretty-print/index';
 import { blueString } from '@mjljm/js-lib/Strings';
 import { Cause, pipe } from 'effect';
