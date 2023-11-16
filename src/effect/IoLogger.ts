@@ -1,12 +1,4 @@
-import * as PrettyPrint from '@mjljm/effect-pretty-print/index';
-
-import {
-	blueString,
-	grayString,
-	greenString,
-	redString,
-	yellowString
-} from '@mjljm/js-lib/Strings';
+import * as ANSI from '@mjljm/js-lib/ansi';
 import { Console, Effect, Logger } from 'effect';
 export class MessageWithObject {
 	constructor(
@@ -15,46 +7,30 @@ export class MessageWithObject {
 	) {}
 }
 
-const _ = PrettyPrint._;
+export const live = (stringify: (u: unknown) => string) =>
+	Logger.replace(
+		Logger.defaultLogger,
+		Logger.make(({ date, message, logLevel }) => {
+			try {
+				const dateColor =
+					logLevel._tag === 'Error' || logLevel._tag === 'Fatal'
+						? ANSI.red
+						: logLevel._tag === 'Warning'
+						  ? ANSI.yellow
+						  : ANSI.green;
 
-const prettyPrintOptions: PrettyPrint.Options = {
-	stringOrSymbolProperties: 'both',
-	enumerableOrNonEnumarableProperties: 'both',
-	showInherited: true,
-	initialTab: _('  '),
-	noLineBreakIfShorterThan: 40
-};
-
-export const live = Logger.replace(
-	Logger.defaultLogger,
-	Logger.make(({ date, message, logLevel }) => {
-		try {
-			const dateColor =
-				logLevel._tag === 'Error' || logLevel._tag === 'Fatal'
-					? redString
-					: logLevel._tag === 'Warning'
-					  ? yellowString
-					  : greenString;
-
-			Effect.runSync(
-				Console.log(
-					dateColor(date.toISOString()) +
-						(message instanceof MessageWithObject
-							? ': ' +
-							  grayString(message.message) +
-							  '\n' +
-							  blueString(PrettyPrint.stringify(message.object, prettyPrintOptions).value)
-							: typeof message === 'string'
-							  ? ': ' + grayString(message)
-							  : '\n' + blueString(PrettyPrint.stringify(message, prettyPrintOptions).value))
-				)
-			);
-		} catch (e) {
-			Effect.runSync(
-				Console.log(
-					redString(`Logging error\n${PrettyPrint.stringify(e, prettyPrintOptions).value}`)
-				)
-			);
-		}
-	})
-);
+				Effect.runSync(
+					Console.log(
+						dateColor(date.toISOString()) +
+							(message instanceof MessageWithObject
+								? ': ' + ANSI.gray(message.message) + '\n' + ANSI.blue(stringify(message.object))
+								: typeof message === 'string'
+								  ? ': ' + ANSI.gray(message)
+								  : '\n' + ANSI.blue(stringify(message)))
+					)
+				);
+			} catch (e) {
+				Effect.runSync(Console.log(ANSI.red(`Logging error\n${stringify(e)}`)));
+			}
+		})
+	);

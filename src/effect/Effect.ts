@@ -3,17 +3,19 @@ import { PredicateEffect } from '@mjljm/effect-lib/effect/Predicate';
 import { FunctionPortError, GeneralError } from '@mjljm/effect-lib/Errors';
 import { Effect, List, pipe } from 'effect';
 
-export const clearAndShowAllCauses = <T, R, E extends GeneralError<T> | FunctionPortError, A>(
-	self: Effect.Effect<R, E, A>
-): Effect.Effect<R, never, A> =>
-	Effect.catchAllCause(self, (c) =>
-		pipe(c, format, (message) =>
-			Effect.zipRight(
-				message === '' ? Effect.logInfo('SCRIPT EXITED SUCCESSFULLY') : Effect.logError(message),
-				Effect.never
+export const clearAndShowAllCauses =
+	(stringify: (u: unknown) => string) =>
+	<T, R, E extends GeneralError<T> | FunctionPortError, A>(
+		self: Effect.Effect<R, E, A>
+	): Effect.Effect<R, never, A> =>
+		Effect.catchAllCause(self, (c) =>
+			pipe(c, format(stringify), (message) =>
+				Effect.zipRight(
+					message === '' ? Effect.logInfo('SCRIPT EXITED SUCCESSFULLY') : Effect.logError(message),
+					Effect.never
+				)
 			)
-		)
-	);
+		);
 
 export const iterateFullEffect = <Z, R1, E1, R2, E2>(
 	initial: Z,
