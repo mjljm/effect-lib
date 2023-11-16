@@ -24,7 +24,8 @@
 		"terser": "^5.24.0",
 		"typescript": "5.2.2",
 		"vite": "4.5.0",
-		"@types/luxon": "3.3.4"
+		"@types/luxon": "3.3.4",
+		"@mjljm/configs": "workspace:^"
 	},
 	"dependencies": {
 		"@effect/typeclass": "0.15.0",
