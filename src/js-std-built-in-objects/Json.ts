@@ -1,4 +1,4 @@
-import * as MError from '#internal/Error';
+import { MError } from '#mjljm/effect-lib/index';
 import { Effect } from 'effect';
 
 export const stringify = (

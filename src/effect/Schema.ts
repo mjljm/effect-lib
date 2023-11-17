@@ -1,4 +1,4 @@
-import * as MError from '#internal/Error';
+import { MError } from '#mjljm/effect-lib/index';
 import { AST, Schema } from '@effect/schema';
 import { StringUtils } from '@mjljm/js-lib';
 import { Effect, Either, Option, ReadonlyArray, String, pipe } from 'effect';

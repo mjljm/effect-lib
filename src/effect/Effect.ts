@@ -1,6 +1,4 @@
-import * as MError from '#internal/Error';
-import * as MCause from '#internal/effect/Cause';
-import * as MPredicate from '#internal/effect/Predicate';
+import { MCause, MError, MPredicate } from '#mjljm/effect-lib/index';
 import { Effect, List, pipe } from 'effect';
 
 export const clearAndShowAllCauses =

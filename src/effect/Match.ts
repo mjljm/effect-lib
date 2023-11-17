@@ -1,4 +1,4 @@
-import * as MFunction from '#internal/effect/Function';
+import { MFunction } from '#mjljm/effect-lib/index';
 
 export const primitive = MFunction.isPrimitive;
 const isFunction = MFunction.isFunction;
