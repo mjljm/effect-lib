@@ -1,4 +1,4 @@
-import * as EO3 from '@mjljm/effect-lib/effect/mydata/Option3';
+import * as EO3 from '#internal/effect/mydata/Option3';
 import {Either} from 'effect';
 import { dual } from 'effect/Function';
 /**

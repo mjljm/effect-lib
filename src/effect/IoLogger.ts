@@ -1,5 +1,6 @@
-import * as ANSI from '@mjljm/js-lib/ansi';
+import { ANSI } from '@mjljm/js-lib';
 import { Console, Effect, Logger } from 'effect';
+
 export class MessageWithObject {
 	constructor(
 		public message: string,
@@ -23,7 +24,10 @@ export const live = (stringify: (u: unknown) => string) =>
 					Console.log(
 						dateColor(date.toISOString()) +
 							(message instanceof MessageWithObject
-								? ': ' + ANSI.gray(message.message) + '\n' + ANSI.blue(stringify(message.object))
+								? ': ' +
+								  ANSI.gray(message.message) +
+								  '\n' +
+								  ANSI.blue(stringify(message.object))
 								: typeof message === 'string'
 								  ? ': ' + ANSI.gray(message)
 								  : '\n' + ANSI.blue(stringify(message)))

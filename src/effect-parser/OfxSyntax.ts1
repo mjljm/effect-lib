@@ -1,8 +1,8 @@
 import * as Syntax from '@effect/parser/Syntax';
 import * as Monoid from '@effect/typeclass/Monoid';
-import * as EE from '@mjljm/effect-lib/effect/data/Either';
-import * as EO3 from '@mjljm/effect-lib/effect/mydata/Option3';
-import * as ESyntax from '@mjljm/effect-lib/effect/parser/syntax';
+import * as EE from '#internal/effect/data/Either';
+import * as EO3 from '#internal/effect/mydata/Option3';
+import * as ESyntax from '#internal/effect/parser/syntax';
 import * as Chunk from 'effect/Chunk';
 import {Either} from 'effect';
 import { pipe } from 'effect';

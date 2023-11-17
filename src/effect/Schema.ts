@@ -1,6 +1,6 @@
+import * as MError from '#internal/Error';
 import { AST, Schema } from '@effect/schema';
-import { EffectSchemaError } from '@mjljm/effect-lib/Errors';
-import { isoToYyyymmdd, yyyymmdToIso } from '@mjljm/js-lib/strings';
+import { StringUtils } from '@mjljm/js-lib';
 import { Effect, Either, Option, ReadonlyArray, String, pipe } from 'effect';
 import { DateTime } from 'luxon';
 
@@ -11,7 +11,11 @@ export const parse =
 		pipe(
 			Schema.parse(schema)(i, options),
 			Effect.catchAll(
-				(e) => new EffectSchemaError({ originalFunctionName: 'parse', originalError: e })
+				(e) =>
+					new MError.EffectSchema({
+						originalFunctionName: 'parse',
+						originalError: e
+					})
 			)
 		);
 
@@ -21,7 +25,11 @@ export const parseEither =
 		pipe(
 			Schema.parseEither(schema)(i, options),
 			Either.mapLeft(
-				(e) => new EffectSchemaError({ originalFunctionName: 'parse', originalError: e })
+				(e) =>
+					new MError.EffectSchema({
+						originalFunctionName: 'parse',
+						originalError: e
+					})
 			)
 		);
 
@@ -50,9 +58,12 @@ export const inArray = <C, B extends A, A extends string = B>(
 	a: ReadonlyArray<C>,
 	f: (s: string) => (c: C) => boolean
 ) =>
-	Schema.filter<B, A>((s) => pipe(a, ReadonlyArray.findFirst(f(s)), Option.isSome), {
-		message: () => 'Not one of the allowed values'
-	});
+	Schema.filter<B, A>(
+		(s) => pipe(a, ReadonlyArray.findFirst(f(s)), Option.isSome),
+		{
+			message: () => 'Not one of the allowed values'
+		}
+	);
 
 // Array filters
 /**
@@ -63,7 +74,12 @@ export const inArray = <C, B extends A, A extends string = B>(
  */
 export const noDups = <C>(isEquivalent: (self: C, that: C) => boolean) =>
 	Schema.filter<ReadonlyArray<C>>(
-		(a) => pipe(a, ReadonlyArray.dedupeWith(isEquivalent), (a1) => a1.length === a.length),
+		(a) =>
+			pipe(
+				a,
+				ReadonlyArray.dedupeWith(isEquivalent),
+				(a1) => a1.length === a.length
+			),
 		{
 			message: () => 'No duplicates allowed'
 		}
@@ -76,8 +92,15 @@ export const noDups = <C>(isEquivalent: (self: C, that: C) => boolean) =>
  * @param fromIso - the schema<'YYYY-MM-DD',T> schema.
  *
  */
-export const schemaFromIsoToSchemaFromYyyymmdd = <T>(fromIso: Schema.Schema<string, T>) =>
-	Schema.transform(Schema.string, fromIso, yyyymmdToIso, isoToYyyymmdd);
+export const schemaFromIsoToSchemaFromYyyymmdd = <T>(
+	fromIso: Schema.Schema<string, T>
+) =>
+	Schema.transform(
+		Schema.string,
+		fromIso,
+		StringUtils.yyyymmdToIso,
+		StringUtils.isoToYyyymmdd
+	);
 
 /**
  * Schema that takes a string 'YYYYMMDD' and returns a date.

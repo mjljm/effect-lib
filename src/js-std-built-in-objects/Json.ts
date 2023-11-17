@@ -1,12 +1,14 @@
-import { FunctionPortError } from '@mjljm/effect-lib/errors';
-
+import * as MError from '#internal/Error';
 import { Effect } from 'effect';
 
-export const stringify = (value: unknown, replacer?: Parameters<typeof JSON.stringify>[1]) =>
+export const stringify = (
+	value: unknown,
+	replacer?: Parameters<typeof JSON.stringify>[1]
+) =>
 	Effect.try({
 		try: () => JSON.stringify(value, replacer),
 		catch: (e) =>
-			new FunctionPortError({
+			new MError.FunctionPort({
 				originalError: e,
 				originalFunctionName: 'JSON.stringify',
 				moduleName: 'json.ts',
@@ -14,11 +16,14 @@ export const stringify = (value: unknown, replacer?: Parameters<typeof JSON.stri
 			})
 	});
 
-export const parse = (text: string, reviver?: Parameters<typeof JSON.parse>[1]) =>
+export const parse = (
+	text: string,
+	reviver?: Parameters<typeof JSON.parse>[1]
+) =>
 	Effect.try({
 		try: () => JSON.parse(text, reviver) as unknown,
 		catch: (e) =>
-			new FunctionPortError({
+			new MError.FunctionPort({
 				originalError: e,
 				originalFunctionName: 'JSON.parse',
 				moduleName: 'json.ts',
