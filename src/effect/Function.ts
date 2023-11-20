@@ -21,7 +21,8 @@ export const iterate: {
 		readonly while: Predicate.Predicate<A>;
 		readonly body: (a: A) => A;
 	}
-): A => (options.while(initial) ? iterate(options.body(initial), options) : initial);
+): A =>
+	options.while(initial) ? iterate(options.body(initial), options) : initial;
 
 export const iterateNonRecursive: {
 	<A, B extends A>(
@@ -74,7 +75,8 @@ export const loop: {
 		readonly body: (b: B) => A;
 		readonly step: (b: B) => B;
 	}
-): Array<A> => Array.from(loopInternal(initial, options.while, options.step, options.body));
+): Array<A> =>
+	Array.from(loopInternal(initial, options.while, options.step, options.body));
 
 const loopInternal = <A, B>(
 	initial: B,
@@ -126,14 +128,23 @@ export { type ObjectRecord as Record };
 type AnyArray = unknown[];
 export { type AnyArray as Array };
 
-export type Primitive = string | number | bigint | boolean | symbol | undefined | null;
+export type Primitive =
+	| string
+	| number
+	| bigint
+	| boolean
+	| symbol
+	| undefined
+	| null;
 //eslint-disable-next-line @typescript-eslint/ban-types
 export type Unknown = Primitive | Function | ObjectRecord | AnyArray;
 export type RecordOrArray = ObjectRecord | AnyArray;
 
 export const isPrimitive = (u: unknown): u is Primitive =>
 	u === null ||
-	['string', 'number', 'boolean', 'bigingt', 'symbol', 'undefined'].includes(typeof u);
+	['string', 'number', 'boolean', 'bigingt', 'symbol', 'undefined'].includes(
+		typeof u
+	);
 export const isString = Predicate.isString;
 export const isNumber = Predicate.isNumber;
 export const isBigint = Predicate.isBigInt;
@@ -148,3 +159,4 @@ export const isRecord = Predicate.isRecord;
 export const isArray = Array.isArray;
 export const isRecordOrArray = (u: unknown): u is RecordOrArray =>
 	u !== null && typeof u === 'object';
+export const isUrl = (u: unknown): u is URL => u instanceof URL;

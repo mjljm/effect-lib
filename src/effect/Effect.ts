@@ -3,14 +3,14 @@ import { Effect, List, pipe } from 'effect';
 
 export const clearAndShowAllCauses =
 	(stringify: (u: unknown) => string) =>
-	<T, R, E extends MError.General<T> | MError.FunctionPort, A>(
+	<T, R, E extends MError.General<T>, A>(
 		self: Effect.Effect<R, E, A>
 	): Effect.Effect<R, never, A> =>
 		Effect.catchAllCause(self, (c) =>
 			pipe(c, MCause.format(stringify), (message) =>
 				Effect.zipRight(
 					message === ''
-						? Effect.logInfo('SCRIPT EXITED SUCCESSFULLY')
+						? Effect.logDebug('SCRIPT EXITED SUCCESSFULLY')
 						: Effect.logError(message),
 					Effect.never
 				)

@@ -18,21 +18,20 @@ const formatInternal =
 
 export const format =
 	(stringify: (u: unknown) => string) =>
-	<T, E extends MError.General<T> | MError.FunctionPort>(
-		self: Cause.Cause<E>
-	) =>
+	<T, E extends MError.General<T>>(self: Cause.Cause<E>) =>
 		pipe(
 			self,
 			formatInternal(
 				stringify,
 				(error) =>
-					`SCRIPT FAILED WITH ERROR: ${
-						error instanceof MError.FunctionPort
-							? `\n${stringify(error)}`
-							: `${error.message}\n${pipe(
-									error.originalCause,
-									formatInternal(stringify, (error) => `\n${stringify(error)}`)
-							  )}`
-					}`
+					'SCRIPT FAILED WITH ERROR: ' +
+					error.message +
+					(typeof error.originalCause === 'undefined'
+						? ''
+						: '\n' +
+						  formatInternal(
+								stringify,
+								(error) => '\n' + stringify(error)
+						  )(error.originalCause))
 			)
 		);

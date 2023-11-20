@@ -35,7 +35,8 @@ module.exports = {
 	// env is set globally because it needs to be extended and it does not disturb non
 	// javascript parsers
 	env: {
-		es2024: true
+		es2024: true,
+		sharedNodeBrowser: true
 	},
 	overrides: [
 		{

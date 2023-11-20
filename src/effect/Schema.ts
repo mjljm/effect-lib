@@ -1,7 +1,23 @@
-import { MError } from '#mjljm/effect-lib/index';
-import { AST, Schema } from '@effect/schema';
+import { MError, MFunction } from '#mjljm/effect-lib/index';
+import {
+	AST,
+	Arbitrary,
+	ParseResult,
+	Pretty,
+	Equivalence as SEquivalence,
+	Schema
+} from '@effect/schema';
+
 import { StringUtils } from '@mjljm/js-lib';
-import { Effect, Either, Option, ReadonlyArray, String, pipe } from 'effect';
+import {
+	Effect,
+	Either,
+	Equivalence,
+	Option,
+	ReadonlyArray,
+	String,
+	pipe
+} from 'effect';
 import { DateTime } from 'luxon';
 
 // Parsing
@@ -33,6 +49,35 @@ export const parseEither =
 			)
 		);
 
+// New data types
+/**
+ * @category URL constructor
+ */
+
+const urlArbitrary = (): Arbitrary.Arbitrary<URL> => (fc) =>
+	fc.webUrl().map((s) => new URL(s));
+const urlPretty = (): Pretty.Pretty<URL> => (url: URL) =>
+	`new URL(${url.toJSON()})`;
+const urlEquivalence: Equivalence.Equivalence<URL> = Equivalence.mapInput(
+	Equivalence.string,
+	(url) => url.toJSON()
+);
+
+export const UrlFromSelf: Schema.Schema<URL> = Schema.declare(
+	[],
+	Schema.struct({}),
+	() => (u, _, ast) =>
+		MFunction.isUrl(u)
+			? ParseResult.success(u)
+			: ParseResult.failure(ParseResult.type(ast, u)),
+	{
+		[AST.IdentifierAnnotationId]: 'Url',
+		[Pretty.PrettyHookId]: urlPretty,
+		[Arbitrary.ArbitraryHookId]: urlArbitrary,
+		[SEquivalence.EquivalenceHookId]: () => urlEquivalence
+	}
+);
+
 // Filters
 // String filters
 
@@ -42,7 +87,7 @@ export const parseEither =
  * @param f - The format of the expected date (see luxon)
  *
  */
-export const validDate = (f: string) =>
+export const date = (f: string) =>
 	Schema.filter<string, string>((s) => DateTime.fromFormat(s, f).isValid, {
 		message: () => `Not a string that represents a '${f}' formatted date`
 	});
@@ -64,6 +109,21 @@ export const inArray = <C, B extends A, A extends string = B>(
 			message: () => 'Not one of the allowed values'
 		}
 	);
+
+/**
+ * String filter that ensures the given string represents an email
+ *
+ */
+export const email = pipe(
+	Schema.string,
+	Schema.message(() => 'not a string'),
+	Schema.nonEmpty({ message: () => 'required' }),
+	Schema.pattern(/[a-z0-9]+@[a-z]+\.[a-z]{2,3}/, {
+		message: () => 'not a valid email'
+	}),
+	Schema.title('email'),
+	Schema.description('An email address')
+);
 
 // Array filters
 /**
@@ -125,3 +185,21 @@ export const schemaToCsvToSchemaToStringArray =
 			String.split(sep),
 			ReadonlyArray.join(sep)
 		);
+
+/**
+ * Transforms a string representing a URL to a URL object
+ */
+export const stringToUrl = Schema.transformOrFail(
+	Schema.string,
+	UrlFromSelf,
+	(s) => {
+		try {
+			return ParseResult.success(new URL(s));
+		} catch (_) {
+			return ParseResult.failure(
+				ParseResult.type(Schema.string.ast, s, 'URL expected')
+			);
+		}
+	},
+	(url) => ParseResult.success(url.toJSON())
+);
