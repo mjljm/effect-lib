@@ -35,8 +35,8 @@ const xmlNode: Syntax.Syntax<string, string, string, XmlNode> = pipe(
 			E.right([
 				[
 					from.name,
-					pipe(from.children, RA.map(E.left), Chunk.fromIterable, (cs) =>
-						Chunk.concat(cs, pipe(from.values, RA.map(E.right), Chunk.fromIterable))
+					pipe(from.children, RA.map(E.left), Chunk.unsafeFromIterable, (cs) =>
+						Chunk.concat(cs, pipe(from.values, RA.map(E.right), Chunk.unsafeFromIterable))
 					)
 				] as const,
 				from.name

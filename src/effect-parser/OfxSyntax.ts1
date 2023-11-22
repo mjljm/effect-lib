@@ -200,7 +200,7 @@ const multiContainer = <A>(child: Syntax.Syntax<string, string, string, A>, tagS
 		),
 		Syntax.transform(
 			(to) => E.lefts(to),
-			(from) => pipe(from, RA.map(E.left), Chunk.fromIterable)
+			(from) => pipe(from, RA.map(E.left), Chunk.unsafeFromIterable)
 		)
 	);
 

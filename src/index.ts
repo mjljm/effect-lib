@@ -9,6 +9,7 @@ export * as MOption from '#mjljm/effect-lib/effect/Option';
 export * as MPredicate from '#mjljm/effect-lib/effect/Predicate';
 export * as MReadOnlyArray from '#mjljm/effect-lib/effect/ReadonlyArray';
 export * as MSchema from '#mjljm/effect-lib/effect/Schema';
+export * as MString from '#mjljm/effect-lib/effect/String';
 export * as MStruct from '#mjljm/effect-lib/effect/Struct';
 export * as IoToday from '#mjljm/effect-lib/js-std-built-in-objects/IoToday';
 export * as MJson from '#mjljm/effect-lib/js-std-built-in-objects/Json';
