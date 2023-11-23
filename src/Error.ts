@@ -1,5 +1,5 @@
-import { ParseResult } from '@effect/schema';
-import { Cause, Data } from 'effect';
+import { ArrayFormatter, ParseResult } from '@effect/schema';
+import { Cause, Data, ReadonlyArray, pipe } from 'effect';
 
 export class FunctionPort extends Data.Error<{
 	originalError: unknown;
@@ -11,12 +11,29 @@ export class FunctionPort extends Data.Error<{
 export const isFunctionPort = (u: unknown): u is FunctionPort =>
 	u instanceof FunctionPort;
 /**
- * We need to tag clearly errors coming from Effect Schema because they can be pretty printed using formatErrors
+ * We need to have a special Error class for errors from Effect Schema because they can be pretty printed using formatErrors
  */
 export class EffectSchema extends Data.Error<{
-	originalFunctionName: string;
 	originalError: ParseResult.ParseError;
-}> {}
+}> {
+	public toJson = () =>
+		pipe(
+			ArrayFormatter.formatErrors(this.originalError.errors),
+			ReadonlyArray.map(
+				(issue) =>
+					issue.message +
+					' at path "' +
+					pipe(
+						issue.path,
+						ReadonlyArray.map((p) => p.toString()),
+						ReadonlyArray.join('/')
+					) +
+					'"'
+			),
+			ReadonlyArray.join('\n'),
+			(s) => 'Effect Schema parsing error\n' + s
+		);
+}
 
 export const isEffectSchema = (u: unknown): u is EffectSchema =>
 	u instanceof EffectSchema;

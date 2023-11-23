@@ -1,21 +1,39 @@
 import { MCause, MError, MPredicate } from '#mjljm/effect-lib/index';
-import { Effect, List, pipe } from 'effect';
+import { ANSI } from '@mjljm/js-lib';
+import { Console, Effect, Function, List, pipe } from 'effect';
 
-export const clearAndShowAllCauses =
-	(stringify: (u: unknown) => string) =>
-	<T, R, E extends MError.General<T>, A>(
+export const asNever = <R, E, A>(
+	self: Effect.Effect<R, E, A>
+): Effect.Effect<R, E, never> => Effect.zipRight(self, Effect.never);
+
+export const clearAndShowAllCauses: {
+	(
+		stringify: (u: unknown) => string
+	): <T, R, E extends MError.General<T>, A>(
 		self: Effect.Effect<R, E, A>
+	) => Effect.Effect<R, never, A>;
+	<T, R, E extends MError.General<T>, A>(
+		self: Effect.Effect<R, E, A>,
+		stringify: (u: unknown) => string
+	): Effect.Effect<R, never, A>;
+} = Function.dual(
+	2,
+	<T, R, E extends MError.General<T>, A>(
+		self: Effect.Effect<R, E, A>,
+		stringify: (u: unknown) => string
 	): Effect.Effect<R, never, A> =>
 		Effect.catchAllCause(self, (c) =>
-			pipe(c, MCause.format(stringify), (message) =>
-				Effect.zipRight(
+			pipe(
+				c,
+				MCause.format(stringify),
+				(message) =>
 					message === ''
-						? Effect.logDebug('SCRIPT EXITED SUCCESSFULLY')
-						: Effect.logError(message),
-					Effect.never
-				)
+						? Console.log(ANSI.green('SCRIPT EXITED SUCCESSFULLY'))
+						: Console.log(ANSI.red(message)),
+				asNever
 			)
-		);
+		)
+);
 
 export const iterateFullEffect = <Z, R1, E1, R2, E2>(
 	initial: Z,

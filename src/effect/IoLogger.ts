@@ -1,18 +1,8 @@
 import { MFunction } from '#mjljm/effect-lib/index';
 import { ANSI } from '@mjljm/js-lib';
-import {
-	FiberId,
-	HashSet,
-	Logger,
-	Option,
-	ReadonlyArray,
-	identity,
-	pipe
-} from 'effect';
+import { FiberId, HashSet, Logger, Option, ReadonlyArray, identity, pipe } from 'effect';
 
-const TypeId: unique symbol = Symbol.for(
-	'@mjljm/effect-lib/effect/IoLogger.ts'
-);
+const TypeId: unique symbol = Symbol.for('@mjljm/effect-lib/effect/IoLogger.ts');
 type TypeId = typeof TypeId;
 
 interface Message {
@@ -25,13 +15,8 @@ interface Message {
 	readonly skipLineAfter: boolean;
 }
 //const Message = MStruct.make<Message>;
-const isMessage = (u: unknown): u is Message =>
-	MFunction.isRecord(u) && u[TypeId] === TypeId;
-export const $ = (
-	title: string,
-	skipLineBefore = true,
-	skipLineAfter = false
-): Message => ({
+const isMessage = (u: unknown): u is Message => MFunction.isRecord(u) && u[TypeId] === TypeId;
+export const $ = (title: string, skipLineBefore = true, skipLineAfter = false): Message => ({
 	message: ANSI.yellow(title),
 	showDate: true,
 	skipMessageFormatting: true,
@@ -40,12 +25,7 @@ export const $ = (
 	skipLineAfter,
 	[TypeId]: TypeId
 });
-export const _ = (
-	text: string,
-	skipLineBefore = false,
-	skipLineAfter = false,
-	object: unknown = null
-): Message => ({
+export const _ = (text: string, skipLineBefore = false, skipLineAfter = false, object: unknown = null): Message => ({
 	message: text,
 	showDate: false,
 	skipMessageFormatting: false,
