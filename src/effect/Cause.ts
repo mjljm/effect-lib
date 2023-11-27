@@ -1,5 +1,5 @@
-import { MError } from '#mjljm/effect-lib/index';
-import { Cause, FiberId, Function, HashSet, ReadonlyArray, pipe } from 'effect';
+import { MError, MFiberId } from '#mjljm/effect-lib/index';
+import { Cause, Function, String, pipe } from 'effect';
 
 export const isGeneralCause = (
 	c: Cause.Cause<unknown>
@@ -16,17 +16,15 @@ const formatInternal = <E>(
 		onFail: (error) => onFail(error),
 		onDie: (defect) => `SCRIPT DIED WITH DEFECT:\n${stringify(defect)}`,
 		onInterrupt: (fiberId) =>
-			'FIBERS ' +
-			pipe(
-				FiberId.ids(fiberId),
-				HashSet.map((n) => n.toString()),
-				ReadonlyArray.join(',')
-			) +
-			' WERE INTERRUPTED',
+			pipe(MFiberId.toJson(fiberId), (json) =>
+				String.includes(',')(json)
+					? `FIBERS ${json} WERE INTERRUPTED`
+					: `FIBER ${json} WAS INTERRUPTED`
+			),
 		onSequential: (left, right) =>
 			left === '' ? right : right === '' ? left : `${left}\n${right}`,
 		onParallel: (left, right) =>
-			left === '' ? right : right === '' ? left : `${left}\n\n${right}`
+			left === '' ? right : right === '' ? left : `${left}\n${right}`
 	});
 
 export const format: {

@@ -1,6 +1,45 @@
-import * as Monoid from '@effect/typeclass/Monoid';
-import * as Semigroup from '@effect/typeclass/Semigroup';
-import { Option } from 'effect';
+import { MFunction } from '#mjljm/effect-lib/index';
+import { Option, Predicate, pipe } from 'effect';
+
+/**
+ * A utility function that lifts a function that returns an unknown into a function that returns an `Option<B>`. The returned function returns none if it does not return a B. It returns a some of the result otherwise
+ **/
+export const liftUnknownResult =
+	<B>(refinement: Predicate.Refinement<unknown, B>) =>
+	<A extends ReadonlyArray<unknown>>(
+		f: (...args: A) => unknown
+	): ((...args: A) => Option.Option<B>) =>
+	(...args) =>
+		pipe(f(...args), (result) =>
+			refinement(result) ? Option.some(result) : Option.none()
+		);
+
+/**
+ * A utility function that lifts a function that throws exceptions and returns an unknown into a function that returns an `Option<B>`. The returned function returns none if it throws or does not return a B. It returns a some of the result otherwise
+ **/
+export const liftThrowableWithUnknownResult =
+	<B>(refinement: Predicate.Refinement<unknown, B>) =>
+	<A extends ReadonlyArray<unknown>>(
+		f: (...args: A) => unknown
+	): ((...args: A) => Option.Option<B>) =>
+	(...args) =>
+		pipe(
+			Option.liftThrowable(f)(...args),
+			Option.flatMap((result) =>
+				refinement(result) ? Option.some(result) : Option.none()
+			)
+		);
+
+/**
+ * A utility function that lifts an unknown into a function that does not throw and returns an `Option<B>`. The returned function returns none if f is not a function, or if it is a function that throws or does not return a B. It returns a some of the result otherwise
+ **/
+export const liftUnknown =
+	<B>(refinement: Predicate.Refinement<unknown, B>) =>
+	(f: unknown): ((...args: ReadonlyArray<never>) => Option.Option<B>) =>
+		MFunction.isFunction(f)
+			? liftThrowableWithUnknownResult(refinement)(f)
+			: () => Option.none();
+
 /**
  * Semigroup for options that returns a some only if there is one and one only some
  * in the list to concatenate
@@ -12,13 +51,13 @@ import { Option } from 'effect';
  *
  * @since 1.0.0
  */
-export const getXorOptionSemigroupSameDisallowed = <A>(): Semigroup.Semigroup<Option.Option<A>> =>
+/*export const getXorOptionSemigroupSameDisallowed = <A>(): Semigroup.Semigroup<Option.Option<A>> =>
 	Semigroup.make((self: Option.Option<A>, that: Option.Option<A>) =>
 		Option.match(self, {
 			onNone: () => that,
 			onSome: () => Option.match(that, { onNone: () => self, onSome: () => Option.none() })
 		})
-	);
+	);*/
 
 /**
  * Monoid for options that returns a some only if there is one and one only some
@@ -26,8 +65,8 @@ export const getXorOptionSemigroupSameDisallowed = <A>(): Semigroup.Semigroup<Op
  *
  * @since 1.0.0
  */
-export const getXorOptionMonoidSameDisallowed = <A>(): Monoid.Monoid<Option.Option<A>> =>
-	Monoid.fromSemigroup(getXorOptionSemigroup(), Option.none());
+/*export const getXorOptionMonoidSameDisallowed = <A>(): Monoid.Monoid<Option.Option<A>> =>
+	Monoid.fromSemigroup(getXorOptionSemigroup(), Option.none());*/
 
 /**
  * Semigroup for options that returns a some only if there is one and one only some
@@ -41,7 +80,7 @@ export const getXorOptionMonoidSameDisallowed = <A>(): Monoid.Monoid<Option.Opti
  *
  * @since 1.0.0
  */
-export const getXorOptionSemigroupSameAllowed = <A>(): Semigroup.Semigroup<Option.Option<A>> =>
+/*export const getXorOptionSemigroupSameAllowed = <A>(): Semigroup.Semigroup<Option.Option<A>> =>
 	Semigroup.make((self: Option.Option<A>, that: Option.Option<A>) =>
 		Option.match(self, {
 			onNone: () => that,
@@ -51,7 +90,7 @@ export const getXorOptionSemigroupSameAllowed = <A>(): Semigroup.Semigroup<Optio
 					onSome: (v2) => (v1 === v2 ? Option.some(v1) : Option.none())
 				})
 		})
-	);
+	);*/
 
 /**
  * Monoid for options that returns a some only if there is one and one only some
@@ -59,5 +98,5 @@ export const getXorOptionSemigroupSameAllowed = <A>(): Semigroup.Semigroup<Optio
  *
  * @since 1.0.0
  */
-export const getXorOptionMonoidSameAllowed = <A>(): Monoid.Monoid<Option.Option<A>> =>
-	Monoid.fromSemigroup(getXorOptionSemigroup(), Option.none());
+/*export const getXorOptionMonoidSameAllowed = <A>(): Monoid.Monoid<Option.Option<A>> =>
+	Monoid.fromSemigroup(getXorOptionSemigroup(), Option.none());*/

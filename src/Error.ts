@@ -41,7 +41,7 @@ export const isEffectSchema = (u: unknown): u is EffectSchema =>
 /**
  * This error is meant to be handled by a human being (no action triggered like a retry on HTTP Error). The message must give sufficient context to help identify the origin the error
  */
-export class General<E> extends Data.Error<{
+export class General<E = never> extends Data.Error<{
 	message: string;
 	originalCause?: Cause.Cause<E>;
 }> {}

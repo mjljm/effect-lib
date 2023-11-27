@@ -1,6 +1,6 @@
 import { MCause, MError, MPredicate } from '#mjljm/effect-lib/index';
 import { ANSI } from '@mjljm/js-lib';
-import { Console, Effect, Function, List, pipe } from 'effect';
+import { Console, Effect, Equivalence, Function, List, pipe } from 'effect';
 
 export const asNever = <R, E, A>(
 	self: Effect.Effect<R, E, A>
@@ -117,3 +117,24 @@ const loopDiscard = <Z, R1, E1, R2, E2, R3, E3, A>(
 			}
 		})
 	);
+
+export const cachedFunctionWithLogging = <R, E, A, B>(
+	f: (a: A) => Effect.Effect<R, E, B>,
+	loggingFunction: (
+		a: A,
+		sureNotFromCache: boolean
+	) => Effect.Effect<never, never, void>,
+	eq?: Equivalence.Equivalence<A>
+): Effect.Effect<never, never, (a: A) => Effect.Effect<R, E, B>> =>
+	Effect.gen(function* (_) {
+		// zipLeft because f might be asynchronous. If zipping right, logging may happen long before f executes
+		const functionWithLogging = (a: A) =>
+			Effect.zipLeft(f(a), loggingFunction(a, true));
+		const cachedFunction = yield* _(
+			Effect.cachedFunction(functionWithLogging, eq)
+		);
+		return (a: A) => {
+			// zipLeft because f might be asynchronous. If zipping right, logging may happen long before f executes
+			return Effect.zipLeft(cachedFunction(a), loggingFunction(a, false));
+		};
+	});

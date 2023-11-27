@@ -1,6 +1,16 @@
-import { MError, MFunction } from '#mjljm/effect-lib/index';
+import { MError, MFunction, MOption } from '#mjljm/effect-lib/index';
 import { RegExpUtils } from '@mjljm/js-lib';
-import { Either, Function, HashMap, MutableHashSet, Option, ReadonlyArray, String, identity, pipe } from 'effect';
+import {
+	Either,
+	Function,
+	HashMap,
+	MutableHashSet,
+	Option,
+	ReadonlyArray,
+	String,
+	identity,
+	pipe
+} from 'effect';
 
 /**
  * Same as search but return the last matching pattern instead of the first
@@ -13,7 +23,11 @@ export const searchRight: {
 	(self: string, regexp: RegExp | string): Option.Option<number> =>
 		String.search(
 			self,
-			pipe(regexp, RegExpUtils.toString, (s) => s + RegExpUtils.negativeLookAhead(s))
+			pipe(
+				regexp,
+				RegExpUtils.toJson,
+				(s) => s + RegExpUtils.negativeLookAhead(s)
+			)
 		)
 );
 
@@ -56,24 +70,36 @@ export const takeRightFrom: {
  * @returns an Either
  */
 export const templater: {
-	(
+	<
+		O extends {
+			readonly checkAllUsed: boolean;
+		}
+	>(
 		target: RegExp,
 		replacementMap: HashMap.HashMap<string, string>,
-		checkAllUsed: boolean
+		options?: O
 	): (self: string) => Either.Either<MError.General<unknown>, string>;
-	(
+	<
+		O extends {
+			readonly checkAllUsed?: boolean;
+		}
+	>(
 		self: string,
 		target: RegExp,
 		replacementMap: HashMap.HashMap<string, string>,
-		checkAllUsed: boolean
+		options?: O
 	): Either.Either<MError.General<unknown>, string>;
 } = Function.dual(
 	4,
-	(
+	<
+		O extends {
+			readonly checkAllUsed?: boolean;
+		}
+	>(
 		self: string,
 		target: RegExp,
 		replacementMap: HashMap.HashMap<string, string>,
-		checkAllUsed: boolean
+		options?: O
 	): Either.Either<MError.General<unknown>, string> => {
 		const foundSet = MutableHashSet.empty<string>();
 		let notFound = '';
@@ -92,14 +118,18 @@ export const templater: {
 		if (notFound !== '')
 			return Either.left(
 				new MError.General({
-					message: `templateAllUsedNoExtra: ${notFound} not found in replacementMap`
+					message: `Function String.templateAllUsedNoExtra: ${notFound} not found in replacementMap`
 				})
 			);
-		if (checkAllUsed && HashMap.size(replacementMap) !== MutableHashSet.size(foundSet))
+		if (
+			options &&
+			options.checkAllUsed &&
+			HashMap.size(replacementMap) !== MutableHashSet.size(foundSet)
+		)
 			return Either.left(
 				new MError.General({
 					message:
-						'templateAllUsedNoExtra: some replacements present in replacementMap were not used.\nReplacement map keys:\n' +
+						'Function String.templateAllUsedNoExtra: some replacements present in replacementMap were not used.\nReplacement map keys:\n' +
 						pipe(replacementMap, HashMap.keys, ReadonlyArray.join(',')) +
 						'\nKeys found in template:\n' +
 						pipe(foundSet, ReadonlyArray.join(','))
@@ -114,21 +144,16 @@ export const templater: {
  * @param obj
  * @returns
  */
-export const toString = (obj: MFunction.Record): Option.Option<string> =>
+export const tryToStringToJson = (
+	obj: MFunction.Record
+): Option.Option<string> =>
 	pipe(
 		obj['toString'],
-		(toString) => (toString !== Object.prototype.toString ? safeCall(toString) : Option.none()),
-		Option.orElse(() => safeCall(obj['toJson']))
+		(toString) =>
+			toString !== Object.prototype.toString
+				? MOption.liftUnknown(MFunction.isString)(toString).apply(obj)
+				: Option.none(),
+		Option.orElse(() =>
+			MOption.liftUnknown(MFunction.isString)(obj['toJson']).apply(obj)
+		)
 	);
-
-const safeCall = (f: unknown): Option.Option<string> => {
-	if (typeof f === 'function') {
-		try {
-			const result: unknown = f();
-			return typeof result === 'string' ? Option.some(result) : Option.none();
-		} catch (_) {
-			return Option.none();
-		}
-	}
-	return Option.none();
-};
