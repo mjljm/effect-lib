@@ -78,9 +78,9 @@ export const searchAllWithMatch: {
 		startIndex?: number | undefined
 	): ReadonlyArray<SearchResult> =>
 		MFunction.doWhileAccum(
-			Option.some(
+			MOption.someAsConst(
 				SearchResult({ startIndex: startIndex ?? 0, endIndex: 0, match: '' })
-			) as Option.Some<SearchResult>,
+			),
 			{
 				step: (result) =>
 					searchWithMatch(self, regexp, result.value.startIndex),
@@ -229,3 +229,15 @@ export const tryToStringToJson = (
 			MOption.liftUnknown(MFunction.isString)(obj['toJson']).apply(obj)
 		)
 	);
+
+/**
+ * Returns the provided `string` `that` if `self` is empty, otherwise returns `self`.
+ *
+ * @category error handling
+ */
+export const orElse: {
+	(that: Function.LazyArg<string>): (self: string) => string;
+	(self: string, that: Function.LazyArg<string>): string;
+} = Function.dual(2, (self: string, that: Function.LazyArg<string>): string =>
+	String.isEmpty(self) ? that() : self
+);

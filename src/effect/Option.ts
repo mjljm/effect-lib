@@ -1,5 +1,25 @@
 import { MFunction } from '#mjljm/effect-lib/index';
-import { Option, Predicate, pipe } from 'effect';
+import { Option, Predicate, String, pipe } from 'effect';
+
+/**
+ * Constructor that returns a Some of type Option.Some
+ */
+export const someAsConst = <A>(value: A): Option.Some<A> =>
+	Option.some(value) as Option.Some<A>;
+
+/**
+ * Constructor that returns a None of type Option.None
+ */
+export const noneAsConst = <A>(): Option.None<A> =>
+	Option.none() as Option.None<A>;
+
+/**
+ * Converts a string into an `Option`. Returns the string wrapped in a `Some` if the string is not empty, otherwise returns `None`.
+ *
+ * @category conversions
+ */
+export const fromString = (s: string): Option.Option<string> =>
+	String.isEmpty(s) ? Option.none() : Option.some(s);
 
 /**
  * A utility function that lifts a function that returns an unknown into a function that returns an `Option<B>`. The returned function returns none if it does not return a B. It returns a some of the result otherwise

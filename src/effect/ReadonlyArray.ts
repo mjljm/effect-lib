@@ -108,3 +108,25 @@ export const findAll: {
 			predicate(a) ? ReadonlyArray.append(acc, i) : acc
 		)
 );
+
+/**
+ * Returns the provided `ReadonlyArray` `that` if `self` is empty, otherwise returns `self`.
+ *
+ * @category error handling
+ */
+export const orElse: {
+	<B>(
+		that: Function.LazyArg<ReadonlyArray<B>>
+	): <A>(self: ReadonlyArray<A>) => ReadonlyArray<B | A>;
+	<A, B>(
+		self: ReadonlyArray<A>,
+		that: Function.LazyArg<ReadonlyArray<B>>
+	): ReadonlyArray<A | B>;
+} = Function.dual(
+	2,
+	<A, B>(
+		self: ReadonlyArray<A>,
+		that: Function.LazyArg<ReadonlyArray<B>>
+	): ReadonlyArray<A | B> =>
+		ReadonlyArray.isEmptyReadonlyArray(self) ? that() : self
+);
