@@ -1,1 +1,19 @@
-{ "type": "library", "library": "library", "version": "1.0" }
+{
+	"type": "library",
+	"library": "library",
+	"version": "1.0",
+	"access": "restricted",
+	"description": "",
+	"scripts": [],
+	"devDeps": [["@types/luxon", "*"]],
+	"deps": [
+		["@mjljm/js-lib", "workspace:*"],
+		["@mjljm/effect-lib", "workspace:*"],
+		["luxon", "3.4.4"]
+	],
+	"peerDeps": [
+		["effect", "*"],
+		["@effect/schema", "*"],
+		["@effect/typeclass", "*"]
+	]
+}

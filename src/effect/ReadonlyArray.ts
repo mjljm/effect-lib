@@ -1,4 +1,11 @@
-import { Function, Option, ReadonlyArray, Tuple, pipe } from 'effect';
+import {
+	Function,
+	Option,
+	Predicate,
+	ReadonlyArray,
+	Tuple,
+	pipe
+} from 'effect';
 
 /**
  * Returns true if the provided ReadonlyArray contains duplicates
@@ -6,7 +13,9 @@ import { Function, Option, ReadonlyArray, Tuple, pipe } from 'effect';
  * @since 1.0.0
  */
 export const hasDuplicates = <A>(self: ReadonlyArray<A>): boolean =>
-	pipe(self, ReadonlyArray.dedupe, (as) => (as.length === self.length ? false : true));
+	pipe(self, ReadonlyArray.dedupe, (as) =>
+		as.length === self.length ? false : true
+	);
 
 /**
  * Returns true if the provided ReadonlyArray contains duplicates using the provided isEquivalent function
@@ -14,10 +23,19 @@ export const hasDuplicates = <A>(self: ReadonlyArray<A>): boolean =>
  * @since 1.0.0
  */
 export const hasDuplicatesWith: {
-	<A>(isEquivalent: (self: A, that: A) => boolean): (self: ReadonlyArray<A>) => boolean;
-	<A>(self: ReadonlyArray<A>, isEquivalent: (self: A, that: A) => boolean): boolean;
-} = Function.dual(2, <A>(self: ReadonlyArray<A>, isEquivalent: (self: A, that: A) => boolean) =>
-	pipe(self, ReadonlyArray.dedupeWith(isEquivalent), (as) => (as.length === self.length ? false : true))
+	<A>(
+		isEquivalent: (self: A, that: A) => boolean
+	): (self: ReadonlyArray<A>) => boolean;
+	<A>(
+		self: ReadonlyArray<A>,
+		isEquivalent: (self: A, that: A) => boolean
+	): boolean;
+} = Function.dual(
+	2,
+	<A>(self: ReadonlyArray<A>, isEquivalent: (self: A, that: A) => boolean) =>
+		pipe(self, ReadonlyArray.dedupeWith(isEquivalent), (as) =>
+			as.length === self.length ? false : true
+		)
 );
 
 /**
@@ -29,20 +47,64 @@ export const hasDuplicatesWith: {
  */
 export const findSole = Function.dual<
 	{
-		<A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Option.Option<B>;
-		<A>(predicate: (a: A, i: number) => boolean): (self: ReadonlyArray<A>) => Option.Option<A>;
+		<A, B extends A>(
+			refinement: (a: A, i: number) => a is B
+		): (self: Iterable<A>) => Option.Option<B>;
+		<A>(
+			predicate: (a: A, i: number) => boolean
+		): (self: ReadonlyArray<A>) => Option.Option<A>;
 	},
 	{
-		<A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option.Option<B>;
-		<A>(self: ReadonlyArray<A>, predicate: (a: A, i: number) => boolean): Option.Option<A>;
+		<A, B extends A>(
+			self: Iterable<A>,
+			refinement: (a: A, i: number) => a is B
+		): Option.Option<B>;
+		<A>(
+			self: ReadonlyArray<A>,
+			predicate: (a: A, i: number) => boolean
+		): Option.Option<A>;
 	}
 >(2, <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean) =>
-	pipe(self, ReadonlyArray.filter(predicate), (r) => (r.length === 1 ? ReadonlyArray.get(r, 0) : Option.none()))
+	pipe(self, ReadonlyArray.filter(predicate), (r) =>
+		r.length === 1 ? ReadonlyArray.get(r, 0) : Option.none()
+	)
 );
 
-export const splitOddEvenIndexes = <A>(self: ReadonlyArray<A>): [Array<A>, Array<A>] =>
-	ReadonlyArray.reduce(self, Tuple.make(ReadonlyArray.empty<A>(), ReadonlyArray.empty<A>()), ([even, odd], a) =>
-		even.length <= odd.length
-			? Tuple.make(ReadonlyArray.append(even, a), odd)
-			: Tuple.make(even, ReadonlyArray.append(odd, a))
+/**
+ * Split an array A in two arrays [B,c], B containing all the elements at even indexes, C all elements at odd indexes
+ */
+export const splitOddEvenIndexes = <A>(
+	self: ReadonlyArray<A>
+): [Array<A>, Array<A>] =>
+	ReadonlyArray.reduce(
+		self,
+		Tuple.make(ReadonlyArray.empty<A>(), ReadonlyArray.empty<A>()),
+		([even, odd], a) =>
+			even.length <= odd.length
+				? Tuple.make(ReadonlyArray.append(even, a), odd)
+				: Tuple.make(even, ReadonlyArray.append(odd, a))
 	);
+
+/**
+ * Returns in an array the indexes of all elements of self matching the predicate
+ *
+ * @since 1.0.0
+ */
+export const findAll: {
+	<B extends A, A = B>(
+		predicate: Predicate.Predicate<A>
+	): (self: Iterable<B>) => ReadonlyArray<number>;
+	<B extends A, A = B>(
+		self: Iterable<B>,
+		predicate: Predicate.Predicate<A>
+	): ReadonlyArray<number>;
+} = Function.dual(
+	2,
+	<B extends A, A = B>(
+		self: Iterable<B>,
+		predicate: Predicate.Predicate<A>
+	): ReadonlyArray<number> =>
+		ReadonlyArray.reduce(self, ReadonlyArray.empty<number>(), (acc, a, i) =>
+			predicate(a) ? ReadonlyArray.append(acc, i) : acc
+		)
+);

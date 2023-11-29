@@ -1,77 +1,77 @@
 import {
-	List,
 	MutableHashMap,
 	MutableList,
 	Option,
 	Predicate,
+	identity,
 	pipe
 } from 'effect';
 
 /**
- * Function that takes an initial state and runs it through a body until the result stops meeting the while condition. The final state is returned. Exists in predicate and refinement version.
+ * Function that takes an initial state and runs it through a step until the result stops meeting the while condition (while condition is executed at start of loop). The final state is returned. Exists in predicate and refinement version.
  */
-export const iterate: {
+/*export const whileDoRecursive: {
 	<A, B extends A>(
 		initial: A,
 		options: {
-			readonly while: Predicate.Refinement<A, B>;
-			readonly body: (b: B) => A;
+			readonly predicate: Predicate.Refinement<A, B>;
+			readonly step: (b: B) => A;
 		}
 	): A;
 	<A>(
 		initial: A,
 		options: {
-			readonly while: Predicate.Predicate<A>;
-			readonly body: (a: A) => A;
+			readonly predicate: Predicate.Predicate<A>;
+			readonly step: (a: A) => A;
 		}
 	): A;
 } = <A>(
 	initial: A,
 	options: {
-		readonly while: Predicate.Predicate<A>;
-		readonly body: (a: A) => A;
+		readonly predicate: Predicate.Predicate<A>;
+		readonly step: (a: A) => A;
 	}
 ): A =>
-	options.while(initial) ? iterate(options.body(initial), options) : initial;
+	options.predicate(initial) ? whileDoRecursive(options.step(initial), options) : initial;*/
 
 /**
- * Function that takes an initial state and runs it through a body until the result stops meeting the while condition. The final state is returned. Exists in predicate and refinement version. Same as iterate but coded without recursion
+ * Function that takes an initial state and runs it through a step until the result stops meeting the predicate (the predicate is executed at start of loop). The final state is returned. Exists in predicate and refinement version.
  */
-export const iterateNonRecursive: {
+export const whileDo: {
 	<A, B extends A>(
 		initial: A,
 		options: {
-			readonly while: Predicate.Refinement<A, B>;
-			readonly body: (b: B) => A;
+			readonly predicate: Predicate.Refinement<A, B>;
+			readonly step: (b: B) => A;
 		}
 	): A;
 	<A>(
 		initial: A,
 		options: {
-			readonly while: Predicate.Predicate<A>;
-			readonly body: (a: A) => A;
+			readonly predicate: Predicate.Predicate<A>;
+			readonly step: (a: A) => A;
 		}
 	): A;
 } = <A>(
 	initial: A,
 	options: {
-		readonly while: Predicate.Predicate<A>;
-		readonly body: (a: A) => A;
+		readonly predicate: Predicate.Predicate<A>;
+		readonly step: (a: A) => A;
 	}
 ): A => {
 	let loop = initial;
-	while (options.while(loop)) loop = options.body(loop);
+	while (options.predicate(loop)) loop = options.step(loop);
 	return loop;
 };
 
 /**
- * Function that takes an initial state and, on the one hand, runs it through a body keeping each result and, on the other and, runs it through a step function until the result stops meeting the while condition. The array of all body results is returned. Exists in predicate and refinement version.
+ * Function that takes an initial state and, on the one hand, runs it through a body keeping each result and, on the other and, runs it through a step function until the result stops meeting the predicate. The array of all body results is returned. Exists in predicate and refinement version.
  */
-export const loop: {
+/*export const whileDoAccumRecursive: {
 	<A, B, C extends B>(
 		initial: B,
 		options: {
-			readonly while: Predicate.Refinement<B, C>;
+			readonly predicate: Predicate.Refinement<B, C>;
 			readonly body: (c: C) => A;
 			readonly step: (c: C) => B;
 		}
@@ -79,7 +79,7 @@ export const loop: {
 	<A, B>(
 		initial: B,
 		options: {
-			readonly while: Predicate.Predicate<B>;
+			readonly predicate: Predicate.Predicate<B>;
 			readonly body: (b: B) => A;
 			readonly step: (b: B) => B;
 		}
@@ -87,31 +87,36 @@ export const loop: {
 } = <A, B>(
 	initial: B,
 	options: {
-		readonly while: Predicate.Predicate<B>;
+		readonly predicate: Predicate.Predicate<B>;
 		readonly body: (b: B) => A;
 		readonly step: (b: B) => B;
 	}
 ): Array<A> =>
-	Array.from(loopInternal(initial, options.while, options.step, options.body));
+	Array.from(
+		whileDoAccumRecursiveInternal(initial, options.predicate, options.step, options.body)
+	);
 
-const loopInternal = <A, B>(
+const whileDoAccumRecursiveInternal = <A, B>(
 	initial: B,
 	cont: Predicate.Predicate<B>,
 	step: (b: B) => B,
 	body: (b: B) => A
 ): List.List<A> =>
 	cont(initial)
-		? List.prepend(loopInternal(step(initial), cont, step, body), body(initial))
-		: List.empty();
+		? List.prepend(
+			whileDoAccumRecursiveInternal(step(initial), cont, step, body),
+				body(initial)
+		  )
+		: List.empty();*/
 
 /**
- * Function that takes an initial state and, on the one hand, runs it through a body keeping each result and, on the other and, runs it through a step function until the result stops meeting the while condition. The array of all body results is returned. Exists in predicate and refinement version. Same as loop but coded without recursion
+ * Function that takes an initial state and, on the one hand, runs it through a body keeping each result and, on the other and, runs it through a step function until the result stops meeting the predicate. The array of all body results is returned. Exists in predicate and refinement version. Same as loop but coded without recursion
  */
-export const loopNonRecursive: {
+export const whileDoAccum: {
 	<A, B, C extends B>(
 		initial: B,
 		options: {
-			readonly while: Predicate.Refinement<B, C>;
+			readonly predicate: Predicate.Refinement<B, C>;
 			readonly body: (c: C) => A;
 			readonly step: (c: C) => B;
 		}
@@ -119,7 +124,7 @@ export const loopNonRecursive: {
 	<A, B>(
 		initial: B,
 		options: {
-			readonly while: Predicate.Predicate<B>;
+			readonly predicate: Predicate.Predicate<B>;
 			readonly body: (b: B) => A;
 			readonly step: (b: B) => B;
 		}
@@ -127,14 +132,14 @@ export const loopNonRecursive: {
 } = <A, B>(
 	initial: B,
 	options: {
-		readonly while: Predicate.Predicate<B>;
+		readonly predicate: Predicate.Predicate<B>;
 		readonly body: (b: B) => A;
 		readonly step: (b: B) => B;
 	}
 ): Array<A> => {
 	let loop = initial;
 	const result = MutableList.empty<A>();
-	while (options.while(loop)) {
+	while (options.predicate(loop)) {
 		MutableList.append(result, options.body(loop));
 		loop = options.step(loop);
 	}
@@ -142,7 +147,80 @@ export const loopNonRecursive: {
 };
 
 /**
- * Fonction qui mémoise une fonction qui prend un argument de type A et retourne un argument de type B.
+ * Function that takes an initial state and runs it through a step until the result stops meeting the predicate (the predicate is executed at start of loop). The final state is returned. Exists in predicate and refinement version.
+ */
+export const doWhile: {
+	<A, B extends A>(
+		initial: B,
+		options: {
+			readonly step: (a: B) => A;
+			readonly predicate: Predicate.Refinement<A, B>;
+		}
+	): A;
+	<A>(
+		initial: A,
+		options: {
+			readonly step: (a: A) => A;
+			readonly predicate: Predicate.Predicate<A>;
+		}
+	): A;
+} = <A>(
+	initial: A,
+	options: {
+		readonly step: (a: A) => A;
+		readonly predicate: Predicate.Predicate<A>;
+	}
+): A => {
+	let loop = initial;
+	do {
+		loop = options.step(loop);
+	} while (options.predicate(loop));
+	return loop;
+};
+
+/**
+ * Function that takes an initial state and, on the one hand, runs it through a body keeping each result and, on the other and, runs it through a step function until the result stops meeting the predicate. The array of all body results is returned. Exists in predicate and refinement version.
+ */
+export const doWhileAccum: {
+	<A, B, C extends B>(
+		initial: C,
+		options: {
+			readonly step: (b: C) => B;
+			readonly predicate: Predicate.Refinement<B, C>;
+			readonly body: (c: C) => A;
+		}
+	): Array<A>;
+	<A, B>(
+		initial: B,
+		options: {
+			readonly step: (b: B) => B;
+			readonly predicate: Predicate.Predicate<B>;
+			readonly body: (b: B) => A;
+		}
+	): Array<A>;
+} = <A, B>(
+	initial: B,
+	options: {
+		readonly step: (b: B) => B;
+		readonly predicate: Predicate.Predicate<B>;
+		readonly body: (b: B) => A;
+	}
+): Array<A> => {
+	let loop = initial;
+	let cont: boolean;
+	const result = MutableList.empty<A>();
+	do {
+		loop = options.step(loop);
+		cont = options.predicate(loop);
+		if (cont) MutableList.append(result, options.body(loop));
+	} while (cont);
+	return Array.from(result);
+};
+
+export const makeReadonly: <A>(s: A) => Readonly<A> = identity;
+
+/**
+ * Function to memoize a function that takes an A and returns a B
  */
 export const memoize = <A, B>(f: (a: A) => B): ((a: A) => B) => {
 	const cache = MutableHashMap.empty<A, B>();

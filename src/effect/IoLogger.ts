@@ -1,6 +1,6 @@
 import { MFiberId, MFunction } from '#mjljm/effect-lib/index';
 import { ANSI } from '@mjljm/js-lib';
-import { Logger, MutableHashSet, Option, identity, pipe } from 'effect';
+import { Equal, Logger, Option, identity, pipe } from 'effect';
 
 const TypeId: unique symbol = Symbol.for(
 	'@mjljm/effect-lib/effect/IoLogger.ts'
@@ -17,7 +17,7 @@ interface Message {
 	readonly skipLineAfter: boolean;
 	readonly messageKey: Option.Option<string>;
 }
-//const Message = MStruct.make<Message>;
+const Message = MFunction.makeReadonly<Message>;
 const isMessage = (u: unknown): u is Message =>
 	MFunction.isRecord(u) && u[TypeId] === TypeId;
 export const $ = (
@@ -25,45 +25,47 @@ export const $ = (
 	skipLineBefore = true,
 	skipLineAfter = false,
 	messageKey?: string
-): Message => ({
-	message: ANSI.yellow(title),
-	showDate: true,
-	skipMessageFormatting: true,
-	object: Option.none(),
-	skipLineBefore,
-	skipLineAfter,
-	messageKey: Option.fromNullable(messageKey),
-	[TypeId]: TypeId
-});
+): Message =>
+	Message({
+		message: ANSI.yellow(title),
+		showDate: true,
+		skipMessageFormatting: true,
+		object: Option.none(),
+		skipLineBefore,
+		skipLineAfter,
+		messageKey: Option.fromNullable(messageKey),
+		[TypeId]: TypeId
+	});
 export const _ = (
 	text: string,
 	skipLineBefore = false,
 	skipLineAfter = false,
 	object: unknown = null,
 	messageKey?: string
-): Message => ({
-	message: text,
-	showDate: false,
-	skipMessageFormatting: false,
-	object: Option.fromNullable(object),
-	skipLineBefore,
-	skipLineAfter,
-	messageKey: Option.fromNullable(messageKey),
-	[TypeId]: TypeId
-});
-export const skipLine = (): Message => ({
-	message: '',
-	showDate: false,
-	skipMessageFormatting: true,
-	object: Option.none(),
-	skipLineBefore: false,
-	skipLineAfter: false,
-	messageKey: Option.none(),
-	[TypeId]: TypeId
-});
+): Message =>
+	Message({
+		message: text,
+		showDate: false,
+		skipMessageFormatting: false,
+		object: Option.fromNullable(object),
+		skipLineBefore,
+		skipLineAfter,
+		messageKey: Option.fromNullable(messageKey),
+		[TypeId]: TypeId
+	});
+export const skipLine = (): Message =>
+	Message({
+		message: '',
+		showDate: false,
+		skipMessageFormatting: true,
+		object: Option.none(),
+		skipLineBefore: false,
+		skipLineAfter: false,
+		messageKey: Option.none(),
+		[TypeId]: TypeId
+	});
 
-let cache = MutableHashSet.empty<string>();
-export const clearCache = () => (cache = MutableHashSet.empty<string>());
+let previousKey = Option.none<string>();
 
 export const live = (stringify: (u: unknown) => string) =>
 	pipe(new Date().getTime(), (startTime) =>
@@ -72,48 +74,44 @@ export const live = (stringify: (u: unknown) => string) =>
 			Logger.make(({ date, fiberId, logLevel, message }) => {
 				try {
 					const isObjectMessage = isMessage(message);
-					pipe(
-						isObjectMessage ? message.messageKey : Option.none(),
-						Option.flatMap((key) =>
-							MutableHashSet.has(cache, key)
-								? Option.some(true)
-								: (MutableHashSet.add(cache, key), Option.none())
-						),
-						(o) =>
-							Option.isNone(o) &&
-							console.log(
-								(isObjectMessage && message.skipLineBefore ? '\n' : '') +
-									(isObjectMessage && !message.showDate
-										? ''
-										: (logLevel._tag === 'Error' || logLevel._tag === 'Fatal'
-												? ANSI.red
-												: logLevel._tag === 'Warning'
-												  ? ANSI.yellow
-												  : ANSI.green)(
-												MFiberId.toJson(fiberId) +
-													` ${date.getTime() - startTime}ms `
-										  )) +
-									(isObjectMessage
-										? (message.message === ''
-												? '' // Don't show fiberId when skipping line
-												: (message.skipMessageFormatting
-														? identity
-														: ANSI.gray)(
-														message.message +
-															(!message.showDate
-																? '(' + MFiberId.toJson(fiberId) + ')'
-																: '')
-												  )) +
-										  Option.match(message.object, {
-												onNone: () => '',
-												onSome: (u) => '\n' + ANSI.blue(stringify(u))
-										  }) +
-										  (message.skipLineAfter ? '\n' : '')
-										: typeof message === 'string'
-										  ? ': ' + ANSI.gray(message)
-										  : '\n' + ANSI.blue(stringify(message)))
-							)
-					);
+					const currentKey = isObjectMessage
+						? message.messageKey
+						: Option.none<string>();
+					const skipMessage =
+						Option.isSome(currentKey) && Equal.equals(currentKey, previousKey);
+					previousKey = skipMessage ? Option.none() : currentKey;
+
+					if (!skipMessage)
+						console.log(
+							(isObjectMessage && message.skipLineBefore ? '\n' : '') +
+								(isObjectMessage && !message.showDate
+									? ''
+									: (logLevel._tag === 'Error' || logLevel._tag === 'Fatal'
+											? ANSI.red
+											: logLevel._tag === 'Warning'
+											  ? ANSI.yellow
+											  : ANSI.green)(
+											MFiberId.toJson(fiberId) +
+												` ${date.getTime() - startTime}ms `
+									  )) +
+								(isObjectMessage
+									? (message.message === ''
+											? '' // Don't show fiberId when skipping line
+											: (message.skipMessageFormatting ? identity : ANSI.gray)(
+													message.message +
+														(!message.showDate
+															? '(' + MFiberId.toJson(fiberId) + ')'
+															: '')
+											  )) +
+									  Option.match(message.object, {
+											onNone: () => '',
+											onSome: (u) => '\n' + ANSI.blue(stringify(u))
+									  }) +
+									  (message.skipLineAfter ? '\n' : '')
+									: typeof message === 'string'
+									  ? ': ' + ANSI.gray(message)
+									  : '\n' + ANSI.blue(stringify(message)))
+						);
 				} catch (e) {
 					console.log(ANSI.red(`Logging error\n${stringify(e)}`));
 				}

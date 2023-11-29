@@ -1,5 +1,4 @@
 import { MError, MFunction, MOption } from '#mjljm/effect-lib/index';
-import { RegExpUtils } from '@mjljm/js-lib';
 import {
 	Either,
 	Function,
@@ -12,23 +11,95 @@ import {
 	pipe
 } from 'effect';
 
+interface SearchResult {
+	/** Index of the first letter of the match */
+	readonly startIndex: number;
+	/** Index of the first letter following the match */
+	readonly endIndex: number;
+	/** Text of the matched element */
+	readonly match: string;
+}
+
+const SearchResult = MFunction.makeReadonly<SearchResult>;
+
 /**
- * Same as search but return the last matching pattern instead of the first
+ * Same as search but returns a SearchResult. You can optionnally provide the index from which to start searching
  */
-export const searchRight: {
-	(regexp: RegExp | string): (self: string) => Option.Option<number>;
-	(self: string, regexp: RegExp | string): Option.Option<number>;
+export const searchWithMatch: {
+	(
+		regexp: RegExp,
+		startIndex?: number | undefined
+	): (self: string) => Option.Option<SearchResult>;
+	(
+		self: string,
+		regexp: RegExp,
+		startIndex?: number | undefined
+	): Option.Option<SearchResult>;
+} = Function.dual(
+	3,
+	(
+		self: string,
+		regexp: RegExp,
+		startIndex: number | undefined
+	): Option.Option<SearchResult> => {
+		regexp.lastIndex = startIndex ?? 0;
+		const matchArray = regexp.exec(self);
+		if (!matchArray) return Option.none();
+		const match = matchArray[0];
+		const index = matchArray.index;
+		return Option.some(
+			SearchResult({
+				startIndex: index,
+				endIndex: index + match.length,
+				match
+			})
+		);
+	}
+);
+
+/**
+ * Finds all matches starting at startIndex and, for each one, returns a SearchResult.
+ */
+export const searchAllWithMatch: {
+	(
+		regexp: RegExp,
+		startIndex?: number | undefined
+	): (self: string) => ReadonlyArray<SearchResult>;
+	(
+		self: string,
+		regexp: RegExp,
+		startIndex?: number | undefined
+	): ReadonlyArray<SearchResult>;
 } = Function.dual(
 	2,
-	(self: string, regexp: RegExp | string): Option.Option<number> =>
-		String.search(
-			self,
-			pipe(
-				regexp,
-				RegExpUtils.toJson,
-				(s) => s + RegExpUtils.negativeLookAhead(s)
-			)
+	(
+		self: string,
+		regexp: RegExp,
+		startIndex?: number | undefined
+	): ReadonlyArray<SearchResult> =>
+		MFunction.doWhileAccum(
+			Option.some(
+				SearchResult({ startIndex: startIndex ?? 0, endIndex: 0, match: '' })
+			) as Option.Some<SearchResult>,
+			{
+				step: (result) =>
+					searchWithMatch(self, regexp, result.value.startIndex),
+				predicate: Option.isSome,
+				body: (searchItem) => searchItem.value
+			}
 		)
+);
+
+/**
+ * Same as search but returns the last matching pattern instead of the first
+ */
+export const searchRightWithMatch: {
+	(regexp: RegExp): (self: string) => Option.Option<SearchResult>;
+	(self: string, regexp: RegExp): Option.Option<SearchResult>;
+} = Function.dual(
+	2,
+	(self: string, regexp: RegExp): Option.Option<SearchResult> =>
+		pipe(self, searchAllWithMatch(regexp), ReadonlyArray.last)
 );
 
 /**
@@ -50,14 +121,15 @@ export const takeLeftTo: {
  * Looks from the right for the first substring of self that matches target and returns all characters after that substring. If no occurence is found, returns self
  */
 export const takeRightFrom: {
-	(target: string): (self: string) => string;
-	(self: string, target: string): string;
-} = Function.dual(2, (self: string, target: string): string =>
+	(regexp: RegExp): (self: string) => string;
+	(self: string, regexp: RegExp): string;
+} = Function.dual(2, (self: string, regexp: RegExp): string =>
 	pipe(
 		self,
-		String.lastIndexOf(target),
-		Option.getOrElse(() => -target.length),
-		(pos) => String.takeRight(self, self.length - (pos + target.length))
+		searchRightWithMatch(regexp),
+		Option.map((searchItem) => searchItem.endIndex),
+		Option.getOrElse(() => 0),
+		(pos) => String.slice(pos)(self)
 	)
 );
 

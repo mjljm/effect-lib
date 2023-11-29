@@ -14,10 +14,10 @@ import * as SG from '@effect/typeclass/Semigroup';
 import { dual, type LazyArg } from 'effect/Function';
 import {Option} from 'effect';
 
-export type O3<A> = O.Option<O.Option<A>>;
-export type None<A> = O.None<O.None<A>> | O.None<O.Some<A>>;
-export type Once<A> = O.Some<O.Some<A>>;
-export type Many<A> = O.Some<O.None<A>>;
+export type O3<out A> = O.Option<O.Option<A>>;
+export type None<out A> = O.None<O.None<A>> | O.None<O.Some<A>>;
+export type Once<out A> = O.Some<O.Some<A>>;
+export type Many<out A> = O.Some<O.None<A>>;
 
 export const none = <A>() => O.none<A>() as None<A>;
 export const once = <A>(a: A) => O.some(O.some(a));

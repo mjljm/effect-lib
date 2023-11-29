@@ -1,5 +1,5 @@
 import { Effect } from 'effect';
 
-export interface PredicateEffect<Z, R, E> {
+export interface PredicateEffect<in Z, out R, out E> {
 	(x: Z): Effect.Effect<R, E, boolean>;
 }
