@@ -41,10 +41,19 @@ export const isEffectSchema = (u: unknown): u is EffectSchema =>
 /**
  * This error is meant to be handled by a human being (no action triggered like a retry on HTTP Error). The message must give sufficient context to help identify the origin the error
  */
-export class General<E = never> extends Data.Error<{
+export class General extends Data.Error<{
 	message: string;
-	originalCause?: Cause.Cause<E>;
 }> {}
 
-export const isGeneral = <E>(u: unknown): u is General<E> =>
-	u instanceof General;
+export const isGeneral = (u: unknown): u is General => u instanceof General;
+
+/**
+ * This error is meant to be rethrown in an Effect.catchAllCause
+ */
+export class WithOriginalCause extends Data.Error<{
+	message: string;
+	originalCause: Cause.Cause<unknown>;
+}> {}
+
+export const isWithOriginalCause = (u: unknown): u is WithOriginalCause =>
+	u instanceof WithOriginalCause;

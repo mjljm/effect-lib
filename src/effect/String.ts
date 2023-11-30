@@ -23,7 +23,7 @@ interface SearchResult {
 const SearchResult = MFunction.makeReadonly<SearchResult>;
 
 /**
- * Same as search but returns a SearchResult. You can optionnally provide the index from which to start searching
+ * Same as search but returns a SearchResult. You can optionnally provide the index from which to start searching. g flag MUST BE PROVIDED for regexp or this function won't work.
  */
 export const searchWithMatch: {
 	(
@@ -58,7 +58,7 @@ export const searchWithMatch: {
 );
 
 /**
- * Finds all matches starting at startIndex and, for each one, returns a SearchResult.
+ * Finds all matches starting at startIndex and, for each one, returns a SearchResult. g flag MUST BE PROVIDED for regexp or this function won't work.
  */
 export const searchAllWithMatch: {
 	(
@@ -77,21 +77,28 @@ export const searchAllWithMatch: {
 		regexp: RegExp,
 		startIndex?: number | undefined
 	): ReadonlyArray<SearchResult> =>
-		MFunction.doWhileAccum(
-			MOption.someAsConst(
-				SearchResult({ startIndex: startIndex ?? 0, endIndex: 0, match: '' })
-			),
-			{
-				step: (result) =>
-					searchWithMatch(self, regexp, result.value.startIndex),
-				predicate: Option.isSome,
-				body: (searchItem) => searchItem.value
-			}
-		)
+		// Make sure we don't get stuck in infinite loop if g flag is forgotten
+		String.includes('g')(regexp.flags)
+			? MFunction.doWhileAccum(
+					MOption.someAsConst(
+						SearchResult({
+							startIndex: 0,
+							endIndex: startIndex ?? 0,
+							match: ''
+						})
+					),
+					{
+						step: (result) =>
+							searchWithMatch(self, regexp, result.value.endIndex),
+						predicate: Option.isSome,
+						body: (searchItem) => searchItem.value
+					}
+			  )
+			: ReadonlyArray.empty<SearchResult>()
 );
 
 /**
- * Same as search but returns the last matching pattern instead of the first
+ * Same as search but returns the last matching pattern instead of the first. g flag MUST BE PROVIDED for regexp or this function won't work.
  */
 export const searchRightWithMatch: {
 	(regexp: RegExp): (self: string) => Option.Option<SearchResult>;
@@ -118,7 +125,7 @@ export const takeLeftTo: {
 );
 
 /**
- * Looks from the right for the first substring of self that matches target and returns all characters after that substring. If no occurence is found, returns self
+ * Looks from the right for the first substring of self that matches target and returns all characters after that substring. If no occurence is found, returns self. g flag MUST BE PROVIDED for regexp or this function won't work.
  */
 export const takeRightFrom: {
 	(regexp: RegExp): (self: string) => string;
@@ -150,7 +157,7 @@ export const templater: {
 		target: RegExp,
 		replacementMap: HashMap.HashMap<string, string>,
 		options?: O
-	): (self: string) => Either.Either<MError.General<unknown>, string>;
+	): (self: string) => Either.Either<MError.General, string>;
 	<
 		O extends {
 			readonly checkAllUsed?: boolean;
@@ -160,7 +167,7 @@ export const templater: {
 		target: RegExp,
 		replacementMap: HashMap.HashMap<string, string>,
 		options?: O
-	): Either.Either<MError.General<unknown>, string>;
+	): Either.Either<MError.General, string>;
 } = Function.dual(
 	4,
 	<
@@ -172,7 +179,7 @@ export const templater: {
 		target: RegExp,
 		replacementMap: HashMap.HashMap<string, string>,
 		options?: O
-	): Either.Either<MError.General<unknown>, string> => {
+	): Either.Either<MError.General, string> => {
 		const foundSet = MutableHashSet.empty<string>();
 		let notFound = '';
 		const result = self.replace(target, (match) => {

@@ -1,36 +1,33 @@
 import { MCause, MError, MPredicate } from '#mjljm/effect-lib/index';
-import { ANSI } from '@mjljm/js-lib';
+import { ANSI, StringUtils } from '@mjljm/js-lib';
 import { Console, Effect, Equivalence, Function, List, pipe } from 'effect';
-
-export const asNever = <R, E, A>(
-	self: Effect.Effect<R, E, A>
-): Effect.Effect<R, E, never> => Effect.zipRight(self, Effect.never);
 
 export const clearAndShowAllCauses: {
 	(
-		stringify: (u: unknown) => string
-	): <T, R, E extends MError.General<T>, A>(
+		stringify: (u: unknown) => string,
+		tabChar?: string
+	): <R, E extends MError.WithOriginalCause, A>(
 		self: Effect.Effect<R, E, A>
-	) => Effect.Effect<R, never, A>;
-	<T, R, E extends MError.General<T>, A>(
+	) => Effect.Effect<R, never, A | void>;
+	<R, E extends MError.WithOriginalCause, A>(
 		self: Effect.Effect<R, E, A>,
-		stringify: (u: unknown) => string
-	): Effect.Effect<R, never, A>;
+		stringify: (u: unknown) => string,
+		tabChar?: string
+	): Effect.Effect<R, never, A | void>;
 } = Function.dual(
-	2,
-	<T, R, E extends MError.General<T>, A>(
+	3,
+	<R, E extends MError.WithOriginalCause, A>(
 		self: Effect.Effect<R, E, A>,
-		stringify: (u: unknown) => string
-	): Effect.Effect<R, never, A> =>
+		stringify: (u: unknown) => string,
+		tabChar = '  '
+	): Effect.Effect<R, never, A | void> =>
 		Effect.catchAllCause(self, (c) =>
-			pipe(
-				c,
-				MCause.format(stringify),
-				(message) =>
-					message === ''
-						? Console.log(ANSI.green('SCRIPT EXITED SUCCESSFULLY'))
-						: Console.log(ANSI.red(message)),
-				asNever
+			pipe(c, MCause.toJson(stringify, tabChar), (errorText) =>
+				errorText === ''
+					? Console.log(ANSI.green('SCRIPT EXITED SUCCESSFULLY'))
+					: Console.log(
+							ANSI.red('SCRIPT FAILED\n') + StringUtils.tabify(errorText)
+					  )
 			)
 		)
 );
