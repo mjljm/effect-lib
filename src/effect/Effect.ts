@@ -1,8 +1,21 @@
 import { MCause, MError, MPredicate } from '#mjljm/effect-lib/index';
 import { ANSI, StringUtils } from '@mjljm/js-lib';
-import { Console, Effect, Equivalence, Function, List, pipe } from 'effect';
+import {
+	Console,
+	Effect,
+	Either,
+	Equivalence,
+	Function,
+	List,
+	Option,
+	Predicate,
+	pipe
+} from 'effect';
 
-export const clearAndShowAllCauses: {
+/**
+ * Clears the error channel after logging all possible causes
+ */
+export const clearAndLogAllCauses: {
 	(
 		stringify: (u: unknown) => string,
 		tabChar?: string
@@ -32,28 +45,54 @@ export const clearAndShowAllCauses: {
 		)
 );
 
-export const iterateFullEffect = <Z, R1, E1, R2, E2>(
+/**
+ * Same as Effect.Iterable but both predicate and step are effectful
+ */
+export const whileDo = <Z, R1, E1, R2, E2>(
 	initial: Z,
 	options: {
-		readonly while: MPredicate.PredicateEffect<Z, R1, E1>;
-		readonly body: (z: Z) => Effect.Effect<R2, E2, Z>;
+		readonly predicate: MPredicate.PredicateEffect<Z, R1, E1>;
+		readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
 	}
 ): Effect.Effect<R1 | R2, E1 | E2, Z> =>
 	Effect.suspend(() =>
 		Effect.gen(function* (_) {
-			return (yield* _(options.while(initial)))
-				? yield* _(iterateFullEffect(yield* _(options.body(initial)), options))
+			return (yield* _(options.predicate(initial)))
+				? yield* _(whileDo(yield* _(options.step(initial)), options))
 				: initial;
 		})
 	);
 
+/**
+ * Same as WhileDo but the first step is executed before the predicate
+ */
+export const doWhile = <Z, R1, E1, R2, E2>(
+	initial: Z,
+	options: {
+		readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
+		readonly predicate: MPredicate.PredicateEffect<Z, R1, E1>;
+	}
+): Effect.Effect<R1 | R2, E1 | E2, Z> =>
+	Effect.suspend(() =>
+		Effect.gen(function* (_) {
+			const loop = yield* _(options.step(initial));
+			return (yield* _(options.predicate(loop)))
+				? yield* _(doWhile(loop, options))
+				: loop;
+		})
+	);
+
+/**
+ * Same as Effect.loop but step, predicate and body are effectful
+ */
+
 // @ts-expect-error Same error as in core-effect.ts
-export const loopFullEffect: {
+export const whileDoAccum: {
 	<Z, R1, E1, R2, E2, R3, E3, A>(
 		initial: Z,
 		options: {
-			readonly while: MPredicate.PredicateEffect<Z, R1, E1>;
 			readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
+			readonly predicate: MPredicate.PredicateEffect<Z, R1, E1>;
 			readonly body: (z: Z) => Effect.Effect<R3, E3, A>;
 			readonly discard?: false;
 		}
@@ -61,8 +100,8 @@ export const loopFullEffect: {
 	<Z, R1, E1, R2, E2, R3, E3, A>(
 		initial: Z,
 		options: {
-			readonly while: MPredicate.PredicateEffect<Z, R1, E1>;
 			readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
+			readonly while: MPredicate.PredicateEffect<Z, R1, E1>;
 			readonly body: (z: Z) => Effect.Effect<R3, E3, A>;
 			readonly discard: true;
 		}
@@ -70,12 +109,14 @@ export const loopFullEffect: {
 } = <Z, R1, E1, R2, E2, R3, E3, A>(
 	initial: Z,
 	options: {
-		readonly while: MPredicate.PredicateEffect<Z, R1, E1>;
 		readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
+		readonly while: MPredicate.PredicateEffect<Z, R1, E1>;
 		readonly body: (z: Z) => Effect.Effect<R3, E3, A>;
 		readonly discard?: boolean;
 	}
-) =>
+):
+	| Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, Array<A>>
+	| Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, void> =>
 	options.discard
 		? loopDiscard(initial, options.while, options.step, options.body)
 		: Effect.map(
@@ -115,23 +156,78 @@ const loopDiscard = <Z, R1, E1, R2, E2, R3, E3, A>(
 		})
 	);
 
+/**
+ * Same as Effect.cachedFunction but calls onRecalc if the result is recalculated and onExit just before exiting. Useful for debuuging
+ */
 export const cachedFunctionWithLogging = <R, E, A, B>(
 	f: (a: A) => Effect.Effect<R, E, B>,
-	loggingFunction: (
+	onRecalcOrExit: (
 		a: A,
-		sureNotFromCache: boolean
+		b: B,
+		event: 'onRecalc' | 'onExit'
 	) => Effect.Effect<never, never, void>,
 	eq?: Equivalence.Equivalence<A>
 ): Effect.Effect<never, never, (a: A) => Effect.Effect<R, E, B>> =>
 	Effect.gen(function* (_) {
-		// zipLeft because f might be asynchronous. If zipping right, logging may happen long before f executes
 		const functionWithLogging = (a: A) =>
-			Effect.zipLeft(f(a), loggingFunction(a, true));
+			Effect.gen(function* (_) {
+				const b = yield* _(f(a));
+				// log after calling f that might be asynchronous. Otherwise logging may happen long before f executes
+				yield* _(onRecalcOrExit(a, b, 'onRecalc'));
+				return b;
+			});
 		const cachedFunction = yield* _(
 			Effect.cachedFunction(functionWithLogging, eq)
 		);
-		return (a: A) => {
-			// zipLeft because f might be asynchronous. If zipping right, logging may happen long before f executes
-			return Effect.zipLeft(cachedFunction(a), loggingFunction(a, false));
-		};
+		return (a: A) =>
+			Effect.gen(function* (_) {
+				const b = yield* _(cachedFunction(a));
+				// log after calling f that might be asynchronous. Otherwise logging may happen long before f executes
+				yield* _(onRecalcOrExit(a, b, 'onExit'));
+				return b;
+			});
 	});
+
+/**
+ * Constructs an Effect from an Either
+ */
+export const fromEither = <E, A>(
+	value: Either.Either<E, A>
+): Effect.Effect<never, E, A> =>
+	// Other implementation, shorter but slower: Effect.flatMap(Effect.unit, () => value);
+	Either.match(value, {
+		onLeft: (e) => Effect.fail(e),
+		onRight: (a) => Effect.succeed(a)
+	});
+
+/**
+ * If the value of the `self` fulfills the predicate, returns an Effect of a some. Otherwise returns an Effect of a none.
+ */
+
+export const filterOption: {
+	<A, B extends A>(
+		refinement: Predicate.Refinement<A, B>
+	): <R, E>(
+		self: Effect.Effect<R, E, A>
+	) => Effect.Effect<R, E, Option.Option<B>>;
+	<A>(
+		predicate: Predicate.Predicate<A>
+	): <R, E>(
+		self: Effect.Effect<R, E, A>
+	) => Effect.Effect<R, E, Option.Option<A>>;
+	<R, E, A, B extends A>(
+		self: Effect.Effect<R, E, A>,
+		refinement: Predicate.Refinement<A, B>
+	): Effect.Effect<R, E, Option.Option<B>>;
+	<R, E, A>(
+		self: Effect.Effect<R, E, A>,
+		predicate: Predicate.Predicate<A>
+	): Effect.Effect<R, E, Option.Option<A>>;
+} = Function.dual(
+	2,
+	<R, E, A>(
+		self: Effect.Effect<R, E, A>,
+		predicate: Predicate.Predicate<A>
+	): Effect.Effect<R, E, Option.Option<A>> =>
+		Effect.map(self, (a) => (predicate(a) ? Option.some(a) : Option.none()))
+);

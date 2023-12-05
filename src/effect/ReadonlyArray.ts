@@ -1,4 +1,5 @@
 import {
+	Either,
 	Function,
 	Option,
 	Predicate,
@@ -39,13 +40,44 @@ export const hasDuplicatesWith: {
 );
 
 /**
- * Looks for elements that fulfill a predicate. Returns `none` in case no element or more than
- * one element is found. Otherwise returns the sole matchning element.
+ * Returns none if self contains zero or more than one element. Returns a some of the only element of the array otherwise.
  *
  * @category getters
- * @since 1.0.0
+ * */
+export const getSingleton = <A>(self: ReadonlyArray<A>): Option.Option<A> =>
+	self.length > 1 ? Option.none() : ReadonlyArray.get(self, 0);
+
+/**
+ * Returns a left of error if self contains more than one element. Returns a right of a none if self contains no element and a right of a some of the only element otherwise
+ *
+ * @category getters
+ * */
+export const getSingletonOrElse: {
+	<B>(
+		error: Function.LazyArg<B>
+	): <A>(self: ReadonlyArray<A>) => Either.Either<B, Option.Option<A>>;
+	<A, B>(
+		self: ReadonlyArray<A>,
+		error: Function.LazyArg<B>
+	): Either.Either<B, Option.Option<A>>;
+} = Function.dual(
+	2,
+	<A, B>(
+		self: ReadonlyArray<A>,
+		error: Function.LazyArg<B>
+	): Either.Either<B, Option.Option<A>> =>
+		self.length > 1
+			? Either.left(error())
+			: Either.right(ReadonlyArray.get(self, 0))
+);
+
+/**
+ * Looks for the elements that fulfill the predicate. Returns `none` in case no element or more than
+ * one element is found. Otherwise returns the only matching element.
+ *
+ * @category getters
  */
-export const findSole = Function.dual<
+export const findSingleton = Function.dual<
 	{
 		<A, B extends A>(
 			refinement: (a: A, i: number) => a is B
@@ -64,10 +96,13 @@ export const findSole = Function.dual<
 			predicate: (a: A, i: number) => boolean
 		): Option.Option<A>;
 	}
->(2, <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean) =>
-	pipe(self, ReadonlyArray.filter(predicate), (r) =>
-		r.length === 1 ? ReadonlyArray.get(r, 0) : Option.none()
-	)
+>(
+	2,
+	<A>(
+		self: Iterable<A>,
+		predicate: (a: A, i: number) => boolean
+	): Option.Option<A> =>
+		pipe(self, ReadonlyArray.filter(predicate), getSingleton)
 );
 
 /**
@@ -86,7 +121,7 @@ export const splitOddEvenIndexes = <A>(
 	);
 
 /**
- * Returns in an array the indexes of all elements of self matching the predicate
+ * Returns an array of the indexes of all elements of self matching the predicate
  *
  * @since 1.0.0
  */

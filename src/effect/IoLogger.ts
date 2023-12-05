@@ -20,37 +20,70 @@ interface Message {
 const Message = MFunction.makeReadonly<Message>;
 const isMessage = (u: unknown): u is Message =>
 	MFunction.isRecord(u) && u[TypeId] === TypeId;
-export const $ = (
-	title: string,
-	skipLineBefore = true,
-	skipLineAfter = false,
-	messageKey?: string
-): Message =>
+export const $ = (title: string): Message =>
 	Message({
 		message: ANSI.yellow(title),
 		showDate: true,
 		skipMessageFormatting: true,
 		object: Option.none(),
-		skipLineBefore,
-		skipLineAfter,
-		messageKey: Option.fromNullable(messageKey),
+		skipLineBefore: true,
+		skipLineAfter: false,
+		messageKey: Option.none(),
 		[TypeId]: TypeId
 	});
-export const _ = (
-	text: string,
-	skipLineBefore = false,
-	skipLineAfter = false,
-	object: unknown = null,
-	messageKey?: string
-): Message =>
+export const _ = (text: string): Message =>
 	Message({
 		message: text,
 		showDate: false,
 		skipMessageFormatting: false,
-		object: Option.fromNullable(object),
-		skipLineBefore,
-		skipLineAfter,
-		messageKey: Option.fromNullable(messageKey),
+		object: Option.none(),
+		skipLineBefore: false,
+		skipLineAfter: false,
+		messageKey: Option.none(),
+		[TypeId]: TypeId
+	});
+export const _eol = (text: string): Message =>
+	Message({
+		message: text,
+		showDate: false,
+		skipMessageFormatting: false,
+		object: Option.none(),
+		skipLineBefore: false,
+		skipLineAfter: true,
+		messageKey: Option.none(),
+		[TypeId]: TypeId
+	});
+export const eol_ = (text: string): Message =>
+	Message({
+		message: text,
+		showDate: false,
+		skipMessageFormatting: false,
+		object: Option.none(),
+		skipLineBefore: true,
+		skipLineAfter: false,
+		messageKey: Option.none(),
+		[TypeId]: TypeId
+	});
+export const messageWithObject = (text: string, object: unknown): Message =>
+	Message({
+		message: text,
+		showDate: false,
+		skipMessageFormatting: false,
+		object: Option.some(object),
+		skipLineBefore: false,
+		skipLineAfter: false,
+		messageKey: Option.none(),
+		[TypeId]: TypeId
+	});
+export const messageWithKey = (text: string, key: string): Message =>
+	Message({
+		message: text,
+		showDate: false,
+		skipMessageFormatting: false,
+		object: Option.none(),
+		skipLineBefore: false,
+		skipLineAfter: false,
+		messageKey: Option.some(key),
 		[TypeId]: TypeId
 	});
 export const skipLine = (): Message =>
