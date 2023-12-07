@@ -217,8 +217,6 @@ export const doWhileAccum: {
 	return Array.from(result);
 };
 
-export const makeReadonly: <A>(s: A) => Readonly<A> = identity;
-
 /**
  * Function to memoize a function that takes an A and returns a B
  */
@@ -233,6 +231,11 @@ export const memoize = <A, B>(f: (a: A) => B): ((a: A) => B) => {
 			(b) => (MutableHashMap.set(a, b), b)
 		);
 };
+
+/**
+ * Function that takes an object of type A and return an object of type Readonly<A>
+ */
+export const makeReadonly: <A>(s: A) => Readonly<A> = identity;
 
 /**
  * Type qui représente un vrai objet (pas un tableau, pas une fonction, pas une valeur nulle ou undefined). Typescript considère que les instances de classe ne répondent pas à cette définition. Alors qu'elles y répondent.
