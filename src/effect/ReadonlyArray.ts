@@ -72,6 +72,27 @@ export const getSingletonOrElse: {
 );
 
 /**
+ * Throws if self contains more than one element. Returns a none if self contains no element and a some of the only element otherwise
+ *
+ * @category getters
+ * */
+export const getSingletonOrThrowWith: {
+	<B>(
+		error: Function.LazyArg<B>
+	): <A>(self: ReadonlyArray<A>) => Option.Option<A>;
+	<A, B>(self: ReadonlyArray<A>, error: Function.LazyArg<B>): Option.Option<A>;
+} = Function.dual(
+	2,
+	<A, B>(
+		self: ReadonlyArray<A>,
+		error: Function.LazyArg<B>
+	): Option.Option<A> => {
+		if (self.length > 1) throw error();
+		return ReadonlyArray.get(self, 0);
+	}
+);
+
+/**
  * Looks for the elements that fulfill the predicate. Returns `none` in case no element or more than
  * one element is found. Otherwise returns the only matching element.
  *
