@@ -4,17 +4,16 @@
 import { StringUtils } from '@mjljm/js-lib';
 import { Context, Layer } from 'effect';
 
-export interface Interface {
+export interface ServiceInterface {
 	readonly asDate: () => Date;
 	readonly asIsoString: () => string;
 	readonly asYyyymmdd: () => string;
 }
 
-export const ServiceTag = Context.Tag<Interface>();
+export const ServiceTag = Context.Tag<ServiceInterface>();
 
-export const implementation: Interface = {
+export const live = Layer.succeed(ServiceTag, {
 	asDate: () => new Date(),
 	asIsoString: () => new Date().toISOString(),
 	asYyyymmdd: () => StringUtils.isoToYyyymmdd(new Date().toISOString())
-};
-export const live = Layer.succeed(ServiceTag, implementation);
+});

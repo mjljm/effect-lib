@@ -1,4 +1,8 @@
 import {
+	Effect,
+	Equal,
+	Equivalence,
+	Hash,
 	MutableHashMap,
 	MutableList,
 	Option,
@@ -216,19 +220,38 @@ export const doWhileAccum: {
 	} while (cont);
 	return Array.from(result);
 };
-
+Effect.cachedFunction;
 /**
  * Function to memoize a function that takes an A and returns a B
  */
-export const memoize = <A, B>(f: (a: A) => B): ((a: A) => B) => {
-	const cache = MutableHashMap.empty<A, B>();
+export const memoize = <A, B>(
+	f: (a: A) => B,
+	Eq?: Equivalence.Equivalence<A> | undefined
+): ((a: A) => B) => {
+	const cache = MutableHashMap.empty<EqContainer, B>();
+
+	class EqContainer implements Equal.Equal {
+		constructor(
+			public readonly value: A,
+			public readonly Eq?: Equivalence.Equivalence<A> | undefined
+		) {}
+		[Equal.symbol] = (that: Equal.Equal): boolean =>
+			that instanceof EqContainer
+				? this.Eq
+					? this.Eq(this.value, that.value)
+					: Equal.equals(this.value, that.value)
+				: false;
+		[Hash.symbol] = (): number => Hash.hash(this.value);
+	}
 
 	return (a: A) =>
-		pipe(
-			cache,
-			MutableHashMap.get(a),
-			Option.getOrElse(() => f(a)),
-			(b) => (MutableHashMap.set(a, b), b)
+		pipe(new EqContainer(a, Eq), (cont) =>
+			pipe(
+				cache,
+				MutableHashMap.get(cont),
+				Option.getOrElse(() => f(a)),
+				(b) => (MutableHashMap.set(cache, cont, b), b)
+			)
 		);
 };
 

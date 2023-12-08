@@ -1,14 +1,10 @@
-import { MFiberId, MFunction } from '#mjljm/effect-lib/index';
+import { MFiberId } from '#mjljm/effect-lib/index';
 import { ANSI } from '@mjljm/js-lib';
-import { Equal, Logger, Option, identity, pipe } from 'effect';
+import { Data, Equal, Logger, Option, identity, pipe } from 'effect';
 
-const TypeId: unique symbol = Symbol.for(
-	'@mjljm/effect-lib/effect/IoLogger.ts'
-);
-type TypeId = typeof TypeId;
+//const moduleTag = '@mjljm/effect-lib/effect/IoLogger/';
 
-interface Message {
-	readonly [TypeId]: TypeId;
+class Message extends Data.Class<{
 	readonly message: string;
 	readonly showDate: boolean;
 	readonly skipMessageFormatting: boolean;
@@ -16,86 +12,77 @@ interface Message {
 	readonly skipLineBefore: boolean;
 	readonly skipLineAfter: boolean;
 	readonly messageKey: Option.Option<string>;
-}
-const Message = MFunction.makeReadonly<Message>;
-const isMessage = (u: unknown): u is Message =>
-	MFunction.isRecord(u) && u[TypeId] === TypeId;
+}> {}
+
 export const $ = (title: string): Message =>
-	Message({
+	new Message({
 		message: ANSI.yellow(title),
 		showDate: true,
 		skipMessageFormatting: true,
 		object: Option.none(),
 		skipLineBefore: true,
 		skipLineAfter: false,
-		messageKey: Option.none(),
-		[TypeId]: TypeId
+		messageKey: Option.none()
 	});
 export const _ = (text: string): Message =>
-	Message({
+	new Message({
 		message: text,
 		showDate: false,
 		skipMessageFormatting: false,
 		object: Option.none(),
 		skipLineBefore: false,
 		skipLineAfter: false,
-		messageKey: Option.none(),
-		[TypeId]: TypeId
+		messageKey: Option.none()
 	});
 export const _eol = (text: string): Message =>
-	Message({
+	new Message({
 		message: text,
 		showDate: false,
 		skipMessageFormatting: false,
 		object: Option.none(),
 		skipLineBefore: false,
 		skipLineAfter: true,
-		messageKey: Option.none(),
-		[TypeId]: TypeId
+		messageKey: Option.none()
 	});
 export const eol_ = (text: string): Message =>
-	Message({
+	new Message({
 		message: text,
 		showDate: false,
 		skipMessageFormatting: false,
 		object: Option.none(),
 		skipLineBefore: true,
 		skipLineAfter: false,
-		messageKey: Option.none(),
-		[TypeId]: TypeId
+		messageKey: Option.none()
 	});
 export const messageWithObject = (text: string, object: unknown): Message =>
-	Message({
+	new Message({
 		message: text,
 		showDate: false,
 		skipMessageFormatting: false,
 		object: Option.some(object),
 		skipLineBefore: false,
 		skipLineAfter: false,
-		messageKey: Option.none(),
-		[TypeId]: TypeId
+		messageKey: Option.none()
 	});
 export const messageWithKey = (text: string, key: string): Message =>
-	Message({
+	new Message({
 		message: text,
 		showDate: false,
 		skipMessageFormatting: false,
 		object: Option.none(),
 		skipLineBefore: false,
 		skipLineAfter: false,
-		messageKey: Option.some(key),
-		[TypeId]: TypeId
+		messageKey: Option.some(key)
 	});
 export const skipLine = (): Message =>
-	Message({
+	new Message({
 		message: '',
 		showDate: false,
 		skipMessageFormatting: true,
 		object: Option.none(),
 		skipLineBefore: false,
 		skipLineAfter: false,
-		messageKey: Option.none(),
-		[TypeId]: TypeId
+		messageKey: Option.none()
 	});
 
 let previousKey = Option.none<string>();
@@ -106,7 +93,7 @@ export const live = (stringify: (u: unknown) => string) =>
 			Logger.defaultLogger,
 			Logger.make(({ date, fiberId, logLevel, message }) => {
 				try {
-					const isObjectMessage = isMessage(message);
+					const isObjectMessage = message instanceof Message;
 					const currentKey = isObjectMessage
 						? message.messageKey
 						: Option.none<string>();

@@ -1,5 +1,6 @@
 import { MError, MFunction, MOption } from '#mjljm/effect-lib/index';
 import {
+	Data,
 	Either,
 	Function,
 	HashMap,
@@ -11,16 +12,14 @@ import {
 	pipe
 } from 'effect';
 
-interface SearchResult {
+class SearchResult extends Data.Class<{
 	/** Index of the first letter of the match */
 	readonly startIndex: number;
 	/** Index of the first letter following the match */
 	readonly endIndex: number;
 	/** Text of the matched element */
 	readonly match: string;
-}
-
-const SearchResult = MFunction.makeReadonly<SearchResult>;
+}> {}
 
 /**
  * Same as search but returns a SearchResult. You can optionnally provide the index from which to start searching. g flag MUST BE PROVIDED for regexp or this function won't work.
@@ -48,7 +47,7 @@ export const searchWithMatch: {
 		const match = matchArray[0];
 		const index = matchArray.index;
 		return Option.some(
-			SearchResult({
+			new SearchResult({
 				startIndex: index,
 				endIndex: index + match.length,
 				match
@@ -81,7 +80,7 @@ export const searchAllWithMatch: {
 		String.includes('g')(regexp.flags)
 			? MFunction.doWhileAccum(
 					MOption.someAsConst(
-						SearchResult({
+						new SearchResult({
 							startIndex: 0,
 							endIndex: startIndex ?? 0,
 							match: ''

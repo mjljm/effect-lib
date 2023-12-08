@@ -1,20 +1,29 @@
 import { MFunction } from '#mjljm/effect-lib/index';
 import { Monoid } from '@effect/typeclass';
-import * as TCArray from '@effect/typeclass/data/ReadonlyArray';
-import { Equal, Function, Hash, HashSet, ReadonlyArray, pipe } from 'effect';
+import {
+	Chunk,
+	Data,
+	Equal,
+	Equivalence,
+	Function,
+	Hash,
+	HashSet,
+	pipe
+} from 'effect';
+
+//const moduleTag = '@mjljm/effect-lib/mydata/Tree/';
 
 /**
  * @category model
  */
-export type Forest<A> = ReadonlyArray<Tree<A>>;
+export type Forest<A> = Chunk.Chunk<Tree<A>>;
 
 /**
  * @category model
  */
-export interface Tree<A> {
+export interface Tree<out A> {
 	readonly value: A;
 	readonly forest: Forest<A>;
-	readonly isCircular: boolean; // true if the tree was detected circular at this node
 }
 
 /**
@@ -29,12 +38,11 @@ const Tree = <A>(fa: Tree<A>) => MFunction.makeReadonly<Tree<A>>(fa);
  */
 export const unsafeUnfoldTree = <A, B>(
 	seed: B,
-	f: (b: B) => [treeValue: A, nextSeeds: ReadonlyArray<B>]
+	f: (b: B) => [treeValue: A, nextSeeds: Chunk.Chunk<B>]
 ): Tree<A> =>
 	pipe(f(seed), ([a, bs]) => ({
 		value: a,
-		forest: unsafeUnfoldForest(bs, f),
-		isCircular: false
+		forest: unsafeUnfoldForest(bs, f)
 	}));
 
 /**
@@ -43,60 +51,68 @@ export const unsafeUnfoldTree = <A, B>(
  * @category constructors
  */
 export function unsafeUnfoldForest<A, B>(
-	seeds: ReadonlyArray<B>,
-	f: (b: B) => [treeValue: A, nextSeeds: ReadonlyArray<B>]
+	seeds: Chunk.Chunk<B>,
+	f: (b: B) => [treeValue: A, nextSeeds: Chunk.Chunk<B>]
 ): Forest<A> {
-	return ReadonlyArray.map(seeds, (b) => unsafeUnfoldTree(b, f));
+	return Chunk.map(seeds, (b) => unsafeUnfoldTree(b, f));
 }
 
 /**
- * Build a (possibly infinite) tree from a seed value in breadth-first order. The function does not crash in case of circularity; It simply tags the nodes where circularity was detected. Results are cached in case the same node is met more than once
+ * Build a (possibly infinite) tree from a seed value in breadth-first order. The function detects circularity and reports it in the f function parameter. Results are cached in case the same node is met more than once
  *
  * @category constructors
  */
-export const unfoldTree = <A, B extends Equal.Equal>(
+export const unfoldTree = <A, B>(
 	seed: B,
-	f: (b: B) => [treeValue: A, nextSeeds: ReadonlyArray<B>],
-	memoize: boolean
+	f: (b: B, isCircular: boolean) => [treeValue: A, nextSeeds: Chunk.Chunk<B>],
+	memoize: boolean,
+	Eq?: Equivalence.Equivalence<B> | undefined
 ): Tree<A> => {
-	class UnfoldTreeParams implements Equal.Equal {
-		constructor(
-			readonly seed: B,
-			readonly parents: HashSet.HashSet<B>,
-			readonly memoize: boolean
-		) {}
-
+	class UnfoldTreeParams extends Data.Class<{
+		readonly seed: B;
+		readonly parents: HashSet.HashSet<B>;
+		readonly memoize: boolean;
+	}> {
 		[Equal.symbol] = (that: Equal.Equal): boolean =>
 			that instanceof UnfoldTreeParams
 				? Equal.equals(this.seed, that.seed)
 				: false;
-		[Hash.symbol] = (): number => this.seed[Hash.symbol]();
+		[Hash.symbol] = (): number => Hash.hash(this.seed);
 	}
+	const UnfoldTreeParamsEq = Eq
+		? Equivalence.make((self: UnfoldTreeParams, that: UnfoldTreeParams) =>
+				Eq(self.seed, that.seed)
+		  )
+		: undefined;
 
 	function internalUnfoldTree({
 		seed,
 		parents,
 		memoize
 	}: UnfoldTreeParams): Tree<A> {
-		const [a, bs] = f(seed);
-		const isCircular = HashSet.has(parents, seed);
+		const [a, bs] = f(seed, HashSet.has(parents, seed));
+
 		return {
 			value: a,
-			forest: isCircular
-				? ReadonlyArray.empty()
-				: ReadonlyArray.map(bs, (b) =>
-						pipe(
-							new UnfoldTreeParams(b, HashSet.add(parents, seed), memoize),
-							(p) => (memoize ? cachedUnfoldTree(p) : internalUnfoldTree(p))
-						)
-				  ),
-			isCircular
+			forest: Chunk.map(bs, (b) =>
+				pipe(
+					new UnfoldTreeParams({
+						seed: b,
+						parents: HashSet.add(parents, seed),
+						memoize
+					}),
+					(p) => (memoize ? cachedUnfoldTree(p) : internalUnfoldTree(p))
+				)
+			)
 		};
 	}
-	const cachedUnfoldTree = MFunction.memoize(internalUnfoldTree);
+	const cachedUnfoldTree = MFunction.memoize(
+		internalUnfoldTree,
+		UnfoldTreeParamsEq
+	);
 
 	return internalUnfoldTree(
-		new UnfoldTreeParams(seed, HashSet.empty(), memoize)
+		new UnfoldTreeParams({ seed, parents: HashSet.empty(), memoize })
 	);
 };
 
@@ -128,13 +144,12 @@ export const unfoldTree = <A, B extends Equal.Equal>(
  * @category folding
  */
 export const fold: {
-	<A, B>(f: (a: A, bs: ReadonlyArray<B>) => B): (self: Tree<A>) => B;
-	<A, B>(self: Tree<A>, f: (a: A, bs: ReadonlyArray<B>) => B): B;
+	<A, B>(f: (a: A, bs: Chunk.Chunk<B>) => B): (self: Tree<A>) => B;
+	<A, B>(self: Tree<A>, f: (a: A, bs: Chunk.Chunk<B>) => B): B;
 } = Function.dual(
 	2,
-	<A, B>(self: Tree<A>, f: (a: A, bs: ReadonlyArray<B>) => B): B => {
-		const go = (fa: Tree<A>): B =>
-			f(fa.value, ReadonlyArray.map(fa.forest, go));
+	<A, B>(self: Tree<A>, f: (a: A, bs: Chunk.Chunk<B>) => B): B => {
+		const go = (fa: Tree<A>): B => f(fa.value, Chunk.map(fa.forest, go));
 		return go(self);
 	}
 );
@@ -148,11 +163,9 @@ export const flatMap: {
 } = Function.dual(2, <A, B>(self: Tree<A>, f: (a: A) => Tree<B>): Tree<B> => {
 	const { value, forest } = f(self.value);
 
-	const combine = TCArray.getMonoid<Tree<B>>().combine;
 	return {
 		value,
-		forest: combine(forest, ReadonlyArray.map(self.forest, flatMap(f))),
-		isCircular: self.isCircular
+		forest: Chunk.appendAll(forest, Chunk.map(self.forest, flatMap(f)))
 	};
 });
 
@@ -166,8 +179,7 @@ export const extend: {
 	2,
 	<A, B>(self: Tree<A>, f: (fa: Tree<A>) => B): Tree<B> => ({
 		value: f(self),
-		forest: ReadonlyArray.map(self.forest, extend(f)),
-		isCircular: self.isCircular
+		forest: Chunk.map(self.forest, extend(f))
 	})
 );
 
@@ -195,8 +207,7 @@ export const map: {
 	2,
 	<A, B>(self: Tree<A>, f: (a: A) => B): Tree<B> => ({
 		value: f(self.value),
-		forest: ReadonlyArray.map(self.forest, map(f)),
-		isCircular: self.isCircular
+		forest: Chunk.map(self.forest, map(f))
 	})
 );
 
