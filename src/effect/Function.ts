@@ -1,8 +1,7 @@
+import { EqValue } from '#mjljm/effect-lib/index';
 import {
 	Effect,
-	Equal,
 	Equivalence,
-	Hash,
 	MutableHashMap,
 	MutableList,
 	Option,
@@ -228,29 +227,14 @@ export const memoize = <A, B>(
 	f: (a: A) => B,
 	Eq?: Equivalence.Equivalence<A> | undefined
 ): ((a: A) => B) => {
-	const cache = MutableHashMap.empty<EqContainer, B>();
-
-	class EqContainer implements Equal.Equal {
-		constructor(
-			public readonly value: A,
-			public readonly Eq?: Equivalence.Equivalence<A> | undefined
-		) {}
-		[Equal.symbol] = (that: Equal.Equal): boolean =>
-			that instanceof EqContainer
-				? this.Eq
-					? this.Eq(this.value, that.value)
-					: Equal.equals(this.value, that.value)
-				: false;
-		[Hash.symbol] = (): number => Hash.hash(this.value);
-	}
-
+	const cache = MutableHashMap.empty<EqValue.EqValue<A>, B>();
 	return (a: A) =>
-		pipe(new EqContainer(a, Eq), (cont) =>
+		pipe(new EqValue.EqValue(a, Eq), (eqA) =>
 			pipe(
 				cache,
-				MutableHashMap.get(cont),
+				MutableHashMap.get(eqA),
 				Option.getOrElse(() => f(a)),
-				(b) => (MutableHashMap.set(cache, cont, b), b)
+				(b) => (MutableHashMap.set(cache, eqA, b), b)
 			)
 		);
 };

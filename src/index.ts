@@ -14,4 +14,5 @@ export * as MStream from '#mjljm/effect-lib/effect/Stream';
 export * as MString from '#mjljm/effect-lib/effect/String';
 export * as IoToday from '#mjljm/effect-lib/js-std-built-in-objects/IoToday';
 export * as MJson from '#mjljm/effect-lib/js-std-built-in-objects/Json';
+export * as EqValue from '#mjljm/effect-lib/mydata/EqValue';
 export * as Tree from '#mjljm/effect-lib/mydata/Tree';

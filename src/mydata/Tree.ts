@@ -38,11 +38,11 @@ const Tree = <A>(fa: Tree<A>) => MFunction.makeReadonly<Tree<A>>(fa);
  */
 export const unsafeUnfoldTree = <A, B>(
 	seed: B,
-	f: (b: B) => [treeValue: A, nextSeeds: Chunk.Chunk<B>]
+	f: (seed: B) => [nextValue: A, nextSeeds: Chunk.Chunk<B>]
 ): Tree<A> =>
-	pipe(f(seed), ([a, bs]) => ({
-		value: a,
-		forest: unsafeUnfoldForest(bs, f)
+	pipe(f(seed), ([nextValue, nextSeeds]) => ({
+		value: nextValue,
+		forest: unsafeUnfoldForest(nextSeeds, f)
 	}));
 
 /**
@@ -52,9 +52,9 @@ export const unsafeUnfoldTree = <A, B>(
  */
 export function unsafeUnfoldForest<A, B>(
 	seeds: Chunk.Chunk<B>,
-	f: (b: B) => [treeValue: A, nextSeeds: Chunk.Chunk<B>]
+	f: (seed: B) => [nextValue: A, nextSeeds: Chunk.Chunk<B>]
 ): Forest<A> {
-	return Chunk.map(seeds, (b) => unsafeUnfoldTree(b, f));
+	return Chunk.map(seeds, (seed) => unsafeUnfoldTree(seed, f));
 }
 
 /**
@@ -64,7 +64,10 @@ export function unsafeUnfoldForest<A, B>(
  */
 export const unfoldTree = <A, B>(
 	seed: B,
-	f: (b: B, isCircular: boolean) => [treeValue: A, nextSeeds: Chunk.Chunk<B>],
+	f: (
+		nextSeed: B,
+		isCircular: boolean
+	) => [nextValue: A, nextSeeds: Chunk.Chunk<B>],
 	memoize: boolean,
 	Eq?: Equivalence.Equivalence<B> | undefined
 ): Tree<A> => {
@@ -81,20 +84,23 @@ export const unfoldTree = <A, B>(
 	}
 	const UnfoldTreeParamsEq = Eq
 		? Equivalence.make((self: UnfoldTreeParams, that: UnfoldTreeParams) =>
-				Eq(self.seed, that.seed)
+				Eq(self.seed, that['seed'])
 		  )
 		: undefined;
 
 	function internalUnfoldTree({
-		seed,
+		memoize,
 		parents,
-		memoize
+		seed
 	}: UnfoldTreeParams): Tree<A> {
-		const [a, bs] = f(seed, HashSet.has(parents, seed));
+		/*console.log(
+			`seed:${JSON.stringify(seed)} present:${HashSet.has(parents, seed)}`
+		);*/
+		const [nextValue, nextSeeds] = f(seed, HashSet.has(parents, seed));
 
 		return {
-			value: a,
-			forest: Chunk.map(bs, (b) =>
+			value: nextValue,
+			forest: Chunk.map(nextSeeds, (b) =>
 				pipe(
 					new UnfoldTreeParams({
 						seed: b,
@@ -174,7 +180,7 @@ export const flatMap: {
 		const go =
 			(level: number) =>
 			(self: Tree<A>): Tree<B> => {
-				const { value, forest } = f(self.value, level);
+				const { forest, value } = f(self.value, level);
 
 				return {
 					value,
@@ -272,8 +278,7 @@ export const reduce: {
 				let r: B = f(b, self.value, level);
 				const len = self.forest.length;
 				for (let i = 0; i < len; i++) {
-					// @ts-ignore
-					r = pipe(self.forest[i], go(r, level + 1));
+					r = pipe(self.forest, Chunk.unsafeGet(i), go(r, level + 1));
 				}
 				return r;
 			};
@@ -316,8 +321,7 @@ export const reduceRight: {
 				let r: B = f(b, self.value, level);
 				const len = self.forest.length;
 				for (let i = len - 1; i >= 0; i--) {
-					// @ts-ignore
-					r = pipe(self.forest[i], go(r, level + 1));
+					r = pipe(self.forest, Chunk.unsafeGet(i), go(r, level + 1));
 				}
 				return r;
 			};
