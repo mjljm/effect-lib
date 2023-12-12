@@ -1,13 +1,12 @@
-import { Equal, Equivalence, Hash } from 'effect';
+import { Data, Equal, Equivalence, Hash } from 'effect';
 
 /**
  * Used to encapsulate a value whose equal property we want to change. TO BE USED ONLY WITH MAPS BECAUSE OF TYPE ASSERTION IN EQUAL FUNCTION
  */
-export class EqValue<in out A> implements Equal.Equal {
-	constructor(
-		public readonly value: A,
-		public readonly Eq?: Equivalence.Equivalence<A> | undefined
-	) {}
+export class EqValue<in out A> extends Data.Class<{
+	readonly value: A;
+	readonly Eq?: Equivalence.Equivalence<A> | undefined;
+}> {
 	[Equal.symbol] = (that: Equal.Equal): boolean =>
 		that instanceof EqValue
 			? this.Eq

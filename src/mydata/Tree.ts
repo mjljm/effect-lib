@@ -1,8 +1,9 @@
-import { MFunction } from '#mjljm/effect-lib/index';
+import { EqValue, MFunction } from '#mjljm/effect-lib/index';
 import { Monoid } from '@effect/typeclass';
 import {
 	Chunk,
 	Data,
+	Either,
 	Equal,
 	Equivalence,
 	Function,
@@ -36,13 +37,13 @@ const Tree = <A>(fa: Tree<A>) => MFunction.makeReadonly<Tree<A>>(fa);
  *
  * @category constructors
  */
-export const unsafeUnfoldTree = <A, B>(
+export const UnfoldTree = <A, B>(
 	seed: B,
 	f: (seed: B) => [nextValue: A, nextSeeds: Chunk.Chunk<B>]
 ): Tree<A> =>
 	pipe(f(seed), ([nextValue, nextSeeds]) => ({
 		value: nextValue,
-		forest: unsafeUnfoldForest(nextSeeds, f)
+		forest: UnfoldForest(nextSeeds, f)
 	}));
 
 /**
@@ -50,11 +51,11 @@ export const unsafeUnfoldTree = <A, B>(
  *
  * @category constructors
  */
-export function unsafeUnfoldForest<A, B>(
+export function UnfoldForest<A, B>(
 	seeds: Chunk.Chunk<B>,
 	f: (seed: B) => [nextValue: A, nextSeeds: Chunk.Chunk<B>]
 ): Forest<A> {
-	return Chunk.map(seeds, (seed) => unsafeUnfoldTree(seed, f));
+	return Chunk.map(seeds, (seed) => UnfoldTree(seed, f));
 }
 
 /**
@@ -62,19 +63,19 @@ export function unsafeUnfoldForest<A, B>(
  *
  * @category constructors
  */
-export const unfoldTree = <A, B>(
+export const unfoldEither = <E, A, B>(
 	seed: B,
 	f: (
 		nextSeed: B,
 		isCircular: boolean
-	) => [nextValue: A, nextSeeds: Chunk.Chunk<B>],
-	memoize: boolean,
+	) => Either.Either<E, [nextValue: A, nextSeeds: Chunk.Chunk<B>]>,
+	memoize?: boolean | undefined,
 	Eq?: Equivalence.Equivalence<B> | undefined
-): Tree<A> => {
+): Either.Either<E, Tree<A>> => {
 	class UnfoldTreeParams extends Data.Class<{
 		readonly seed: B;
-		readonly parents: HashSet.HashSet<B>;
-		readonly memoize: boolean;
+		readonly parents: HashSet.HashSet<EqValue.EqValue<B>>;
+		readonly memoize?: boolean | undefined;
 	}> {
 		[Equal.symbol] = (that: Equal.Equal): boolean =>
 			that instanceof UnfoldTreeParams
@@ -84,34 +85,44 @@ export const unfoldTree = <A, B>(
 	}
 	const UnfoldTreeParamsEq = Eq
 		? Equivalence.make((self: UnfoldTreeParams, that: UnfoldTreeParams) =>
-				Eq(self.seed, that['seed'])
+				Eq(self.seed, that.seed)
 		  )
 		: undefined;
 
-	function internalUnfoldTree({
+	const internalUnfoldTree = ({
 		memoize,
 		parents,
 		seed
-	}: UnfoldTreeParams): Tree<A> {
-		/*console.log(
-			`seed:${JSON.stringify(seed)} present:${HashSet.has(parents, seed)}`
-		);*/
-		const [nextValue, nextSeeds] = f(seed, HashSet.has(parents, seed));
-
-		return {
-			value: nextValue,
-			forest: Chunk.map(nextSeeds, (b) =>
-				pipe(
-					new UnfoldTreeParams({
-						seed: b,
-						parents: HashSet.add(parents, seed),
-						memoize
-					}),
-					(p) => (memoize ? cachedUnfoldTree(p) : internalUnfoldTree(p))
-				)
+	}: UnfoldTreeParams): Either.Either<E, Tree<A>> =>
+		pipe(
+			f(seed, HashSet.has(parents, new EqValue.EqValue({ value: seed, Eq }))),
+			Either.flatMap(([nextValue, nextSeeds]) =>
+				Either.all({
+					value: Either.right(nextValue),
+					forest: pipe(
+						Chunk.map(nextSeeds, (nextSeed) =>
+							pipe(
+								new UnfoldTreeParams({
+									seed: nextSeed,
+									parents: HashSet.add(
+										parents,
+										new EqValue.EqValue({ value: nextSeed })
+									),
+									memoize
+								}),
+								(params) =>
+									memoize ?? false
+										? cachedUnfoldTree(params)
+										: internalUnfoldTree(params)
+							)
+						),
+						Either.all,
+						Either.map(Chunk.unsafeFromArray)
+					)
+				})
 			)
-		};
-	}
+		);
+
 	const cachedUnfoldTree = MFunction.memoize(
 		internalUnfoldTree,
 		UnfoldTreeParamsEq

@@ -1,17 +1,28 @@
-import { MCause, MError, MPredicate } from '#mjljm/effect-lib/index';
+import {
+	EqValue,
+	MCause,
+	MError,
+	MPredicate,
+	Tree
+} from '#mjljm/effect-lib/index';
 import { ANSI, StringUtils } from '@mjljm/js-lib';
 import {
+	Chunk,
 	Console,
+	Data,
 	Effect,
 	Either,
+	Equal,
 	Equivalence,
 	Function,
+	Hash,
+	HashSet,
 	List,
 	Option,
 	Predicate,
 	pipe
 } from 'effect';
-
+import { Concurrency } from 'effect/Types';
 /**
  * Clears the error channel after logging all possible causes
  */
@@ -231,3 +242,84 @@ export const filterOption: {
 	): Effect.Effect<R, E, Option.Option<A>> =>
 		Effect.map(self, (a) => (predicate(a) ? Option.some(a) : Option.none()))
 );
+
+/**
+ * Effectful Tree.unfoldTree
+ *
+ * @category constructors
+ */
+export const treeUnfold = <R, E, A, B>(
+	seed: B,
+	f: (
+		nextSeed: B,
+		isCircular: boolean
+	) => Effect.Effect<R, E, [nextValue: A, nextSeeds: Chunk.Chunk<B>]>,
+	memoize?: boolean | undefined,
+	Eq?: Equivalence.Equivalence<B> | undefined,
+	concurrencyOptions?:
+		| { readonly concurrency?: Concurrency | undefined }
+		| undefined
+): Effect.Effect<R, E, Tree.Tree<A>> =>
+	Effect.gen(function* (_) {
+		class UnfoldTreeParams extends Data.Class<{
+			readonly seed: B;
+			readonly parents: HashSet.HashSet<EqValue.EqValue<B>>;
+			readonly memoize?: boolean | undefined;
+		}> {
+			[Equal.symbol] = (that: Equal.Equal): boolean =>
+				that instanceof UnfoldTreeParams
+					? Equal.equals(this.seed, that.seed)
+					: false;
+			[Hash.symbol] = (): number => Hash.hash(this.seed);
+		}
+		const UnfoldTreeParamsEq = Eq
+			? Equivalence.make((self: UnfoldTreeParams, that: UnfoldTreeParams) =>
+					Eq(self.seed, that['seed'])
+			  )
+			: undefined;
+
+		const internalUnfoldTree = ({
+			memoize,
+			parents,
+			seed
+		}: UnfoldTreeParams): Effect.Effect<R, E, Tree.Tree<A>> =>
+			pipe(
+				f(seed, HashSet.has(parents, new EqValue.EqValue({ value: seed, Eq }))),
+				Effect.flatMap(([nextValue, nextSeeds]) =>
+					// Concurency between two fibers of which one is synchronous is useless
+					Effect.all({
+						value: Effect.succeed(nextValue),
+						forest: pipe(
+							Chunk.map(nextSeeds, (nextSeed) =>
+								pipe(
+									new UnfoldTreeParams({
+										seed: nextSeed,
+										parents: HashSet.add(
+											parents,
+											new EqValue.EqValue({ value: nextSeed })
+										),
+										memoize
+									}),
+									(params) =>
+										memoize ?? false
+											? cachedUnfoldTree(params)
+											: internalUnfoldTree(params)
+								)
+							),
+							Effect.allWith(concurrencyOptions),
+							Effect.map(Chunk.unsafeFromArray)
+						)
+					})
+				)
+			);
+
+		const cachedUnfoldTree = yield* _(
+			Effect.cachedFunction(internalUnfoldTree, UnfoldTreeParamsEq)
+		);
+
+		return yield* _(
+			internalUnfoldTree(
+				new UnfoldTreeParams({ seed, parents: HashSet.empty(), memoize })
+			)
+		);
+	});
