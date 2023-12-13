@@ -28,14 +28,14 @@ import { Concurrency } from 'effect/Types';
 export const clearAndLogAllCauses: {
 	(
 		stringify: (u: unknown) => string,
-		tabChar?: string
+		tabChar?: string | undefined
 	): <R, E extends MError.WithOriginalCause, A>(
 		self: Effect.Effect<R, E, A>
 	) => Effect.Effect<R, never, A | void>;
 	<R, E extends MError.WithOriginalCause, A>(
 		self: Effect.Effect<R, E, A>,
 		stringify: (u: unknown) => string,
-		tabChar?: string
+		tabChar?: string | undefined
 	): Effect.Effect<R, never, A | void>;
 } = Function.dual(
 	3,
@@ -295,7 +295,7 @@ export const treeUnfold = <R, E, A, B>(
 										seed: nextSeed,
 										parents: HashSet.add(
 											parents,
-											new EqValue.EqValue({ value: nextSeed })
+											new EqValue.EqValue({ value: seed, Eq })
 										),
 										memoize
 									}),

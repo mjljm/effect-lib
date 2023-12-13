@@ -88,7 +88,6 @@ export const unfoldEither = <E, A, B>(
 				Eq(self.seed, that.seed)
 		  )
 		: undefined;
-
 	const internalUnfoldTree = ({
 		memoize,
 		parents,
@@ -106,7 +105,7 @@ export const unfoldEither = <E, A, B>(
 									seed: nextSeed,
 									parents: HashSet.add(
 										parents,
-										new EqValue.EqValue({ value: nextSeed })
+										new EqValue.EqValue({ value: seed, Eq })
 									),
 									memoize
 								}),

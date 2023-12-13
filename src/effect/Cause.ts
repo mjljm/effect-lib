@@ -5,19 +5,19 @@ import { Cause, Function, String, pipe } from 'effect';
 export const toJson: {
 	(
 		stringify: (u: unknown) => string,
-		tabChar?: string
+		tabChar?: string | undefined
 	): (self: Cause.Cause<unknown>) => string;
 	(
 		self: Cause.Cause<unknown>,
 		stringify: (u: unknown) => string,
-		tabChar?: string
+		tabChar?: string | undefined
 	): string;
 } = Function.dual(
 	3,
 	(
 		self: Cause.Cause<unknown>,
 		stringify: (u: unknown) => string,
-		tabChar = '  '
+		tabChar: string | undefined
 	): string =>
 		Cause.match(self, {
 			onEmpty: '',

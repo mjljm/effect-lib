@@ -229,7 +229,7 @@ export const memoize = <A, B>(
 ): ((a: A) => B) => {
 	const cache = MutableHashMap.empty<EqValue.EqValue<A>, B>();
 	return (a: A) =>
-		pipe(new EqValue.EqValue(a, Eq), (eqA) =>
+		pipe(new EqValue.EqValue({ value: a, Eq }), (eqA) =>
 			pipe(
 				cache,
 				MutableHashMap.get(eqA),
