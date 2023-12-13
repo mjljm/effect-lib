@@ -8,7 +8,6 @@ import {
 import { ANSI, StringUtils } from '@mjljm/js-lib';
 import {
 	Chunk,
-	Console,
 	Data,
 	Effect,
 	Either,
@@ -48,8 +47,8 @@ export const clearAndLogAllCauses: {
 		Effect.catchAllCause(self, (c) =>
 			pipe(c, MCause.toJson(stringify, tabChar), (errorText) =>
 				errorText === ''
-					? Console.log(ANSI.green('SCRIPT EXITED SUCCESSFULLY'))
-					: Console.log(
+					? Effect.logInfo(ANSI.green('SCRIPT EXITED SUCCESSFULLY'))
+					: Effect.logError(
 							ANSI.red('SCRIPT FAILED\n') + StringUtils.tabify(errorText)
 					  )
 			)
@@ -310,7 +309,9 @@ export const treeUnfold = <R, E, A, B>(
 							Effect.map(Chunk.unsafeFromArray)
 						)
 					})
-				)
+				),
+				// makes recursion stack safe
+				(e) => Effect.suspend(() => e)
 			);
 
 		const cachedUnfoldTree = yield* _(

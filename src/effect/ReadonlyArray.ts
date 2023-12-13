@@ -127,7 +127,7 @@ export const findSingleton = Function.dual<
 );
 
 /**
- * Split an array A in two arrays [B,c], B containing all the elements at even indexes, C all elements at odd indexes
+ * Split an array A in two arrays [B,C], B containing all the elements at even indexes, C all elements at odd indexes
  */
 export const splitOddEvenIndexes = <A>(
 	self: ReadonlyArray<A>

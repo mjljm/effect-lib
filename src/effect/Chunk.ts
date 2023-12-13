@@ -1,4 +1,13 @@
-import { Chunk, Either, Function, Option, Predicate, pipe } from 'effect';
+import {
+	Chunk,
+	Either,
+	Function,
+	Option,
+	Predicate,
+	ReadonlyArray,
+	Tuple,
+	pipe
+} from 'effect';
 /**
  * Returns true if the provided Chunk contains duplicates
  * @category utils
@@ -38,6 +47,27 @@ export const getSingletonOrElse: {
 );
 
 /**
+ * Throws if self contains more than one element. Returns a none if self contains no element and a some of the only element otherwise
+ *
+ * @category getters
+ * */
+export const getSingletonOrThrowWith: {
+	<B>(
+		error: Function.LazyArg<B>
+	): <A>(self: Chunk.Chunk<A>) => Option.Option<A>;
+	<A, B>(self: Chunk.Chunk<A>, error: Function.LazyArg<B>): Option.Option<A>;
+} = Function.dual(
+	2,
+	<A, B>(
+		self: Chunk.Chunk<A>,
+		error: Function.LazyArg<B>
+	): Option.Option<A> => {
+		if (self.length > 1) throw error();
+		return Chunk.get(self, 0);
+	}
+);
+
+/**
  * Looks for elements that fulfill the predicate. Returns `none` in case no element or more than
  * one element is found. Otherwise returns the sole matchning element.
  *
@@ -65,4 +95,64 @@ export const findSingleton = Function.dual<
 	}
 >(2, <A>(self: Chunk.Chunk<A>, predicate: Predicate.Predicate<A>) =>
 	pipe(self, Chunk.filter(predicate), getSingleton)
+);
+
+/**
+ * Split a chunk A in two arrays [B,C], B containing all the elements at even indexes, C all elements at odd indexes
+ */
+export const splitOddEvenIndexes = <A>(
+	self: Chunk.Chunk<A>
+): [Chunk.Chunk<A>, Chunk.Chunk<A>] =>
+	Chunk.reduce(
+		self,
+		Tuple.make(Chunk.empty<A>(), Chunk.empty<A>()),
+		([even, odd], a) =>
+			even.length <= odd.length
+				? Tuple.make(Chunk.append(even, a), odd)
+				: Tuple.make(even, Chunk.append(odd, a))
+	);
+
+/**
+ * Returns a Chunk of the indexes of all elements of self matching the predicate
+ *
+ * @since 1.0.0
+ */
+export const findAll: {
+	<B extends A, A = B>(
+		predicate: Predicate.Predicate<A>
+	): (self: Iterable<B>) => Chunk.Chunk<number>;
+	<B extends A, A = B>(
+		self: Iterable<B>,
+		predicate: Predicate.Predicate<A>
+	): Chunk.Chunk<number>;
+} = Function.dual(
+	2,
+	<B extends A, A = B>(
+		self: Iterable<B>,
+		predicate: Predicate.Predicate<A>
+	): Chunk.Chunk<number> =>
+		ReadonlyArray.reduce(self, Chunk.empty<number>(), (acc, a, i) =>
+			predicate(a) ? Chunk.append(acc, i) : acc
+		)
+);
+
+/**
+ * Returns the provided `Chunk` `that` if `self` is empty, otherwise returns `self`.
+ *
+ * @category error handling
+ */
+export const orElse: {
+	<B>(
+		that: Function.LazyArg<Chunk.Chunk<B>>
+	): <A>(self: Chunk.Chunk<A>) => Chunk.Chunk<B | A>;
+	<A, B>(
+		self: Chunk.Chunk<A>,
+		that: Function.LazyArg<Chunk.Chunk<B>>
+	): Chunk.Chunk<A | B>;
+} = Function.dual(
+	2,
+	<A, B>(
+		self: Chunk.Chunk<A>,
+		that: Function.LazyArg<Chunk.Chunk<B>>
+	): Chunk.Chunk<A | B> => (Chunk.isEmpty(self) ? that() : self)
 );
