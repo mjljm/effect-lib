@@ -1,5 +1,15 @@
+import { MFunction, MString } from '#mjljm/effect-lib/index';
 import { ArrayFormatter, ParseResult } from '@effect/schema';
-import { Cause, Data, ReadonlyArray, pipe } from 'effect';
+import { RegExpUtils } from '@mjljm/js-lib';
+import {
+	Cause,
+	Data,
+	Function,
+	Option,
+	ReadonlyArray,
+	String,
+	pipe
+} from 'effect';
 
 export class FunctionPort extends Data.TaggedError('FunctionPort')<{
 	originalError: unknown;
@@ -57,3 +67,36 @@ export class WithOriginalCause extends Data.TaggedError('WithOriginalCause')<{
 
 export const isWithOriginalCause = (u: unknown): u is WithOriginalCause =>
 	u instanceof WithOriginalCause;
+
+export const formatErrorWithStackTrace: {
+	<A extends MFunction.Errorish>(root: string): (self: A) => string;
+	<A extends MFunction.Errorish>(self: A, root: string): string;
+} = Function.dual(
+	2,
+	<A extends MFunction.Errorish>(self: A, root: string): string =>
+		self.stack
+			? pipe(
+					self.stack,
+					String.split(RegExpUtils.lineBreak),
+					ReadonlyArray.headNonEmpty,
+					(lastError) =>
+						pipe(
+							lastError,
+							String.match(/at\s(\S+)\s\((.+):(\d+):(\d+)\)/),
+							Option.map(
+								(matchArray) =>
+									self.message +
+									' at column ' +
+									ReadonlyArray.unsafeGet(matchArray, 4) +
+									' of line ' +
+									ReadonlyArray.unsafeGet(matchArray, 3) +
+									' in file ' +
+									MString.strip(ReadonlyArray.unsafeGet(matchArray, 2), root) +
+									' function:' +
+									ReadonlyArray.unsafeGet(matchArray, 1)
+							),
+							Option.getOrElse(() => self.message + ' ' + lastError)
+						)
+			  )
+			: self.message
+);

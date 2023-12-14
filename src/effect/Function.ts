@@ -290,6 +290,9 @@ export const isPrimitive = (u: unknown): u is Primitive =>
 	['string', 'number', 'boolean', 'bigingt', 'symbol', 'undefined'].includes(
 		typeof u
 	);
+
+export type Errorish = { message: string; stack?: string | undefined };
+
 export const isString = Predicate.isString;
 export const isNumber = Predicate.isNumber;
 export const isBigint = Predicate.isBigInt;
@@ -306,3 +309,8 @@ export const isArray = Array.isArray;
 export const isRecordOrArray = (u: unknown): u is RecordOrArray =>
 	u !== null && typeof u === 'object';
 export const isUrl = (u: unknown): u is URL => u instanceof URL;
+export const isErrorish = (u: unknown): u is Errorish =>
+	u !== null &&
+	typeof u === 'object' &&
+	'message' in u &&
+	typeof u.message === 'string';

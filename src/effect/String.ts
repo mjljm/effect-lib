@@ -247,3 +247,13 @@ export const orElse: {
 } = Function.dual(2, (self: string, that: Function.LazyArg<string>): string =>
 	String.isEmpty(self) ? that() : self
 );
+
+/**
+ * If self starts with s, returns self stripped of s. Otherwise, returns s
+ */
+export const strip: {
+	(s: string): (self: string) => string;
+	(self: string, s: string): string;
+} = Function.dual(2, (self: string, s: string): string =>
+	String.startsWith(self, s) ? String.slice(String.length(s))(self) : self
+);

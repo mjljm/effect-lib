@@ -27,6 +27,7 @@ import { Concurrency } from 'effect/Types';
  */
 export const clearAndLogAllCauses: {
 	(
+		root: string,
 		stringify: (u: unknown) => string,
 		tabChar?: string | undefined
 	): <R, E extends MError.WithOriginalCause, A>(
@@ -34,6 +35,7 @@ export const clearAndLogAllCauses: {
 	) => Effect.Effect<R, never, A | void>;
 	<R, E extends MError.WithOriginalCause, A>(
 		self: Effect.Effect<R, E, A>,
+		root: string,
 		stringify: (u: unknown) => string,
 		tabChar?: string | undefined
 	): Effect.Effect<R, never, A | void>;
@@ -41,11 +43,12 @@ export const clearAndLogAllCauses: {
 	3,
 	<R, E extends MError.WithOriginalCause, A>(
 		self: Effect.Effect<R, E, A>,
+		root: string,
 		stringify: (u: unknown) => string,
 		tabChar = '  '
 	): Effect.Effect<R, never, A | void> =>
 		Effect.catchAllCause(self, (c) =>
-			pipe(c, MCause.toJson(stringify, tabChar), (errorText) =>
+			pipe(c, MCause.toJson(root, stringify, tabChar), (errorText) =>
 				errorText === ''
 					? Effect.logInfo(ANSI.green('SCRIPT EXITED SUCCESSFULLY'))
 					: Effect.logError(
