@@ -1,7 +1,7 @@
 import { ArrayFormatter, ParseResult } from '@effect/schema';
 import { Cause, Data, ReadonlyArray, pipe } from 'effect';
 
-export class FunctionPort extends Data.Error<{
+export class FunctionPort extends Data.TaggedError('FunctionPort')<{
 	originalError: unknown;
 	originalFunctionName: string;
 	moduleName: string;
@@ -13,7 +13,7 @@ export const isFunctionPort = (u: unknown): u is FunctionPort =>
 /**
  * We need to have a special Error class for errors from Effect Schema because they can be pretty printed using formatErrors
  */
-export class EffectSchema extends Data.Error<{
+export class EffectSchema extends Data.TaggedError('EffectSchema')<{
 	originalError: ParseResult.ParseError;
 }> {
 	public toJson = () =>
@@ -41,7 +41,7 @@ export const isEffectSchema = (u: unknown): u is EffectSchema =>
 /**
  * This error is meant to be handled by a human being (no action triggered like a retry on HTTP Error). The message must give sufficient context to help identify the origin the error
  */
-export class General extends Data.Error<{
+export class General extends Data.TaggedError('General')<{
 	message: string;
 }> {}
 
@@ -50,7 +50,7 @@ export const isGeneral = (u: unknown): u is General => u instanceof General;
 /**
  * This error is meant to be rethrown in an Effect.catchAllCause
  */
-export class WithOriginalCause extends Data.Error<{
+export class WithOriginalCause extends Data.TaggedError('WithOriginalCause')<{
 	message: string;
 	originalCause: Cause.Cause<unknown>;
 }> {}
