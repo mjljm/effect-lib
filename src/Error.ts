@@ -11,6 +11,7 @@ import {
 	pipe
 } from 'effect';
 
+// Use TaggedError to get a stack trace (because TaggedError extends Error)
 export class FunctionPort extends Data.TaggedError('FunctionPort')<{
 	originalError: unknown;
 	originalFunctionName: string;

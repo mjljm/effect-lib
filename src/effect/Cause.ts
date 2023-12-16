@@ -20,7 +20,7 @@ export const toJson: {
 		self: Cause.Cause<unknown>,
 		root: string,
 		stringify: (u: unknown) => string,
-		tabChar: string | undefined
+		tabChar: string = '  '
 	): string =>
 		Cause.match(self, {
 			onEmpty: '',

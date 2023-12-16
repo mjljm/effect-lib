@@ -39,9 +39,9 @@ export const searchWithMatch: {
 	(
 		self: string,
 		regexp: RegExp,
-		startIndex: number | undefined
+		startIndex: number = 0
 	): Option.Option<SearchResult> => {
-		regexp.lastIndex = startIndex ?? 0;
+		regexp.lastIndex = startIndex;
 		const matchArray = regexp.exec(self);
 		if (!matchArray) return Option.none();
 		const match = matchArray[0];
@@ -74,7 +74,7 @@ export const searchAllWithMatch: {
 	(
 		self: string,
 		regexp: RegExp,
-		startIndex?: number | undefined
+		startIndex: number = 0
 	): ReadonlyArray<SearchResult> =>
 		// Make sure we don't get stuck in infinite loop if g flag is forgotten
 		String.includes('g')(regexp.flags)
@@ -82,7 +82,7 @@ export const searchAllWithMatch: {
 					MOption.someAsConst(
 						new SearchResult({
 							startIndex: 0,
-							endIndex: startIndex ?? 0,
+							endIndex: startIndex,
 							match: ''
 						})
 					),
@@ -249,11 +249,41 @@ export const orElse: {
 );
 
 /**
+ * Takes all characters from self except the n last characters
+ */
+export const takeLeftBut: {
+	(n: number): (self: string) => string;
+	(self: string, n: number): string;
+} = Function.dual(2, (self: string, n: number): string =>
+	String.takeLeft(self, String.length(self) - n)
+);
+
+/**
+ * Takes all characters from self except the n first characters
+ */
+export const takeRightBut: {
+	(n: number): (self: string) => string;
+	(self: string, n: number): string;
+} = Function.dual(2, (self: string, n: number): string =>
+	String.takeRight(self, String.length(self) - n)
+);
+
+/**
  * If self starts with s, returns self stripped of s. Otherwise, returns s
  */
-export const strip: {
+export const stripLeft: {
 	(s: string): (self: string) => string;
 	(self: string, s: string): string;
 } = Function.dual(2, (self: string, s: string): string =>
-	String.startsWith(self, s) ? String.slice(String.length(s))(self) : self
+	String.startsWith(self)(s) ? takeRightBut(self, String.length(s)) : self
+);
+
+/**
+ * If self ends with s, returns self stripped of s. Otherwise, returns s
+ */
+export const stripRight: {
+	(s: string): (self: string) => string;
+	(self: string, s: string): string;
+} = Function.dual(2, (self: string, s: string): string =>
+	String.endsWith(self)(s) ? takeLeftBut(self, String.length(s)) : self
 );

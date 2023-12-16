@@ -186,3 +186,27 @@ export const orElse: {
 	): ReadonlyArray<A | B> =>
 		ReadonlyArray.isEmptyReadonlyArray(self) ? that() : self
 );
+
+/**
+ * Takes all elements of self except the n last elements
+ */
+export const takeBut: {
+	(n: number): <A>(self: ReadonlyArray<A>) => Array<A>;
+	<A>(self: ReadonlyArray<A>, n: number): Array<A>;
+} = Function.dual(
+	2,
+	<A>(self: ReadonlyArray<A>, n: number): Array<A> =>
+		ReadonlyArray.take(self, ReadonlyArray.length(self) - n)
+);
+
+/**
+ * Takes all elements of self except the n first elements
+ */
+export const takeRightBut: {
+	(n: number): <A>(self: ReadonlyArray<A>) => Array<A>;
+	<A>(self: ReadonlyArray<A>, n: number): Array<A>;
+} = Function.dual(
+	2,
+	<A>(self: ReadonlyArray<A>, n: number): Array<A> =>
+		ReadonlyArray.takeRight(self, ReadonlyArray.length(self) - n)
+);

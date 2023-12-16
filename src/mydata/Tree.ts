@@ -69,7 +69,7 @@ export const unfoldEither = <E, A, B>(
 		nextSeed: B,
 		isCircular: boolean
 	) => Either.Either<E, [nextValue: A, nextSeeds: Chunk.Chunk<B>]>,
-	memoize?: boolean | undefined,
+	memoize = false,
 	Eq?: Equivalence.Equivalence<B> | undefined
 ): Either.Either<E, Tree<A>> => {
 	class UnfoldTreeParams extends Data.Class<{
@@ -89,7 +89,7 @@ export const unfoldEither = <E, A, B>(
 		  )
 		: undefined;
 	const internalUnfoldTree = ({
-		memoize,
+		memoize = false,
 		parents,
 		seed
 	}: UnfoldTreeParams): Either.Either<E, Tree<A>> =>
@@ -110,7 +110,7 @@ export const unfoldEither = <E, A, B>(
 									memoize
 								}),
 								(params) =>
-									memoize ?? false
+									memoize
 										? cachedUnfoldTree(params)
 										: internalUnfoldTree(params)
 							)

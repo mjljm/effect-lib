@@ -156,3 +156,27 @@ export const orElse: {
 		that: Function.LazyArg<Chunk.Chunk<B>>
 	): Chunk.Chunk<A | B> => (Chunk.isEmpty(self) ? that() : self)
 );
+
+/**
+ * Takes all elements of self except the n last elements
+ */
+export const takeBut: {
+	(n: number): <A>(self: Chunk.Chunk<A>) => Chunk.Chunk<A>;
+	<A>(self: Chunk.Chunk<A>, n: number): Chunk.Chunk<A>;
+} = Function.dual(
+	2,
+	<A>(self: Chunk.Chunk<A>, n: number): Chunk.Chunk<A> =>
+		Chunk.take(self, Chunk.size(self) - n)
+);
+
+/**
+ * Takes all elements of self except the n first elements
+ */
+export const takeRightBut: {
+	(n: number): <A>(self: Chunk.Chunk<A>) => Chunk.Chunk<A>;
+	<A>(self: Chunk.Chunk<A>, n: number): Chunk.Chunk<A>;
+} = Function.dual(
+	2,
+	<A>(self: Chunk.Chunk<A>, n: number): Chunk.Chunk<A> =>
+		Chunk.takeRight(self, Chunk.size(self) - n)
+);

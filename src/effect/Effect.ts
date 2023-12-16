@@ -256,7 +256,7 @@ export const treeUnfold = <R, E, A, B>(
 		nextSeed: B,
 		isCircular: boolean
 	) => Effect.Effect<R, E, [nextValue: A, nextSeeds: Chunk.Chunk<B>]>,
-	memoize?: boolean | undefined,
+	memoize = false,
 	Eq?: Equivalence.Equivalence<B> | undefined,
 	concurrencyOptions?:
 		| { readonly concurrency?: Concurrency | undefined }
@@ -281,7 +281,7 @@ export const treeUnfold = <R, E, A, B>(
 			: undefined;
 
 		const internalUnfoldTree = ({
-			memoize,
+			memoize = false,
 			parents,
 			seed
 		}: UnfoldTreeParams): Effect.Effect<R, E, Tree.Tree<A>> =>
@@ -303,7 +303,7 @@ export const treeUnfold = <R, E, A, B>(
 										memoize
 									}),
 									(params) =>
-										memoize ?? false
+										memoize
 											? cachedUnfoldTree(params)
 											: internalUnfoldTree(params)
 								)
