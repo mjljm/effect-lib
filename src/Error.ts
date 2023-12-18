@@ -1,6 +1,6 @@
 import { MFunction, MString } from '#mjljm/effect-lib/index';
 import { ArrayFormatter, ParseResult } from '@effect/schema';
-import { RegExpUtils } from '@mjljm/js-lib';
+import { ANSI, RegExpUtils, StringUtils } from '@mjljm/js-lib';
 import {
 	Cause,
 	Data,
@@ -92,7 +92,10 @@ export const formatErrorWithStackTrace: {
 									' of line ' +
 									ReadonlyArray.unsafeGet(matchArray, 3) +
 									' in file ' +
-									MString.strip(ReadonlyArray.unsafeGet(matchArray, 2), root) +
+									MString.stripLeft(
+										ReadonlyArray.unsafeGet(matchArray, 2),
+										root
+									) +
 									' function:' +
 									ReadonlyArray.unsafeGet(matchArray, 1)
 							),
@@ -101,3 +104,27 @@ export const formatErrorWithStackTrace: {
 			  )
 			: self.message
 );
+
+export const showUncaughtErrorAndExit = ({
+	message,
+	error,
+	srcDirPath,
+	stringify
+}: {
+	message: string;
+	error: unknown;
+	srcDirPath: string;
+	stringify: (u: unknown) => string;
+}) => {
+	console.error(
+		ANSI.red(message + '\n\n') +
+			StringUtils.tabify(
+				ANSI.red('Error:\n') +
+					(MFunction.isErrorish(error)
+						? formatErrorWithStackTrace(error, srcDirPath)
+						: stringify(error))
+			) +
+			'\n\n'
+	);
+	process.exit(1);
+};

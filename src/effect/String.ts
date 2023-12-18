@@ -1,5 +1,6 @@
 import { MError, MFunction, MOption } from '#mjljm/effect-lib/index';
 import {
+	Chunk,
 	Data,
 	Either,
 	Function,
@@ -12,6 +13,8 @@ import {
 	pipe
 } from 'effect';
 
+const moduleTag = '@mjljm/effect-lib/effect/String/';
+
 class SearchResult extends Data.Class<{
 	/** Index of the first letter of the match */
 	readonly startIndex: number;
@@ -22,25 +25,17 @@ class SearchResult extends Data.Class<{
 }> {}
 
 /**
- * Same as search but returns a SearchResult. You can optionnally provide the index from which to start searching. g flag MUST BE PROVIDED for regexp or this function won't work.
+ * Same as search but returns a SearchResult. You can optionnally provide the index from which to start searching. Throws if g flag is not set in the regexp.
  */
-export const searchWithMatch: {
-	(
-		regexp: RegExp,
-		startIndex?: number | undefined
-	): (self: string) => Option.Option<SearchResult>;
-	(
-		self: string,
-		regexp: RegExp,
-		startIndex?: number | undefined
-	): Option.Option<SearchResult>;
-} = Function.dual(
-	3,
-	(
-		self: string,
-		regexp: RegExp,
-		startIndex: number = 0
-	): Option.Option<SearchResult> => {
+
+export const searchWithPos =
+	(regexp: RegExp | string, startIndex = 0) =>
+	(self: string): Option.Option<SearchResult> => {
+		if (typeof regexp === 'string') regexp = new RegExp(regexp, 'g');
+		if (!regexp.flags.includes('g'))
+			throw new MError.General({
+				message: `Function 'searchWithPos' of module '${moduleTag}' must be called with g flag set.`
+			});
 		regexp.lastIndex = startIndex;
 		const matchArray = regexp.exec(self);
 		if (!matchArray) return Option.none();
@@ -53,59 +48,43 @@ export const searchWithMatch: {
 				match
 			})
 		);
-	}
-);
+	};
 
 /**
- * Finds all matches starting at startIndex and, for each one, returns a SearchResult. g flag MUST BE PROVIDED for regexp or this function won't work.
+ * Finds all matches starting and, for each one, returns a SearchResult. Throws if g flag is not set.
  */
-export const searchAllWithMatch: {
-	(
-		regexp: RegExp,
-		startIndex?: number | undefined
-	): (self: string) => ReadonlyArray<SearchResult>;
-	(
-		self: string,
-		regexp: RegExp,
-		startIndex?: number | undefined
-	): ReadonlyArray<SearchResult>;
-} = Function.dual(
-	2,
-	(
-		self: string,
-		regexp: RegExp,
-		startIndex: number = 0
-	): ReadonlyArray<SearchResult> =>
-		// Make sure we don't get stuck in infinite loop if g flag is forgotten
-		String.includes('g')(regexp.flags)
-			? MFunction.doWhileAccum(
-					MOption.someAsConst(
-						new SearchResult({
-							startIndex: 0,
-							endIndex: startIndex,
-							match: ''
-						})
-					),
-					{
-						step: (result) =>
-							searchWithMatch(self, regexp, result.value.endIndex),
-						predicate: Option.isSome,
-						body: (searchItem) => searchItem.value
-					}
-			  )
-			: ReadonlyArray.empty<SearchResult>()
-);
+export const searchAllWithPos =
+	(regexp: RegExp | string) =>
+	(self: string): Chunk.Chunk<SearchResult> => {
+		if (typeof regexp === 'string') regexp = new RegExp(regexp, 'g');
+		if (!regexp.flags.includes('g'))
+			throw new MError.General({
+				message: `Function 'searchAllWithPos' of module '${moduleTag}' must be called with g flag set.`
+			});
+		return pipe(
+			Chunk.fromIterable(self.matchAll(regexp)),
+			Chunk.map((matchArr) => {
+				const index = matchArr.index ?? 0;
+				const match = matchArr[0];
+				return new SearchResult({
+					startIndex: index,
+					endIndex: index + match.length,
+					match
+				});
+			})
+		);
+	};
 
 /**
  * Same as search but returns the last matching pattern instead of the first. g flag MUST BE PROVIDED for regexp or this function won't work.
  */
-export const searchRightWithMatch: {
+export const searchRightWithPos: {
 	(regexp: RegExp): (self: string) => Option.Option<SearchResult>;
 	(self: string, regexp: RegExp): Option.Option<SearchResult>;
 } = Function.dual(
 	2,
 	(self: string, regexp: RegExp): Option.Option<SearchResult> =>
-		pipe(self, searchAllWithMatch(regexp), ReadonlyArray.last)
+		pipe(self, searchAllWithPos(regexp), Chunk.last)
 );
 
 /**
@@ -132,7 +111,7 @@ export const takeRightFrom: {
 } = Function.dual(2, (self: string, regexp: RegExp): string =>
 	pipe(
 		self,
-		searchRightWithMatch(regexp),
+		searchRightWithPos(regexp),
 		Option.map((searchItem) => searchItem.endIndex),
 		Option.getOrElse(() => 0),
 		(pos) => String.slice(pos)(self)
@@ -255,7 +234,7 @@ export const takeLeftBut: {
 	(n: number): (self: string) => string;
 	(self: string, n: number): string;
 } = Function.dual(2, (self: string, n: number): string =>
-	String.takeLeft(self, String.length(self) - n)
+	String.takeLeft(self, self.length - n)
 );
 
 /**
@@ -265,7 +244,7 @@ export const takeRightBut: {
 	(n: number): (self: string) => string;
 	(self: string, n: number): string;
 } = Function.dual(2, (self: string, n: number): string =>
-	String.takeRight(self, String.length(self) - n)
+	String.takeRight(self, self.length - n)
 );
 
 /**
@@ -275,7 +254,7 @@ export const stripLeft: {
 	(s: string): (self: string) => string;
 	(self: string, s: string): string;
 } = Function.dual(2, (self: string, s: string): string =>
-	String.startsWith(self)(s) ? takeRightBut(self, String.length(s)) : self
+	pipe(self, String.startsWith(s)) ? takeRightBut(self, s.length) : self
 );
 
 /**
@@ -285,5 +264,24 @@ export const stripRight: {
 	(s: string): (self: string) => string;
 	(self: string, s: string): string;
 } = Function.dual(2, (self: string, s: string): string =>
-	String.endsWith(self)(s) ? takeLeftBut(self, String.length(s)) : self
+	pipe(self, String.endsWith(s)) ? takeLeftBut(self, s.length) : self
 );
+
+/**
+ * Counts the number of occurences of regexp in self. Throws if g flag is not set
+ */
+export const count =
+	(regexp: RegExp | string) =>
+	(self: string): number => {
+		if (typeof regexp === 'string') regexp = new RegExp(regexp, 'g');
+		if (!regexp.flags.includes('g'))
+			throw new MError.General({
+				message: `Function 'count' of module '${moduleTag}' must be called with g flag set.`
+			});
+		return pipe(
+			self,
+			String.match(regexp),
+			Option.map((matches) => matches.length),
+			Option.getOrElse(() => 0)
+		);
+	};

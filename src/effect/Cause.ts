@@ -4,13 +4,13 @@ import { Cause, Function, String, pipe } from 'effect';
 
 export const toJson: {
 	(
-		root: string,
+		srcDirPath: string,
 		stringify: (u: unknown) => string,
 		tabChar?: string | undefined
 	): (self: Cause.Cause<unknown>) => string;
 	(
 		self: Cause.Cause<unknown>,
-		root: string,
+		srcDirPath: string,
 		stringify: (u: unknown) => string,
 		tabChar?: string | undefined
 	): string;
@@ -18,7 +18,7 @@ export const toJson: {
 	4,
 	(
 		self: Cause.Cause<unknown>,
-		root: string,
+		srcDirPath: string,
 		stringify: (u: unknown) => string,
 		tabChar: string = '  '
 	): string =>
@@ -27,14 +27,14 @@ export const toJson: {
 			onFail: (error) =>
 				pipe(
 					MFunction.isErrorish(error)
-						? ANSI.red(MError.formatErrorWithStackTrace(error, root))
+						? ANSI.red(MError.formatErrorWithStackTrace(error, srcDirPath))
 						: '',
 					(message) =>
 						MError.isWithOriginalCause(error)
 							? message +
 							  '\n' +
 							  StringUtils.tabify(
-									toJson(error.originalCause, root, stringify, tabChar),
+									toJson(error.originalCause, srcDirPath, stringify, tabChar),
 									tabChar
 							  )
 							: ANSI.red('SCRIPT FAILED WITH ERROR(S):\n') +
