@@ -78,45 +78,37 @@ export const searchAllWithPos =
 /**
  * Same as search but returns the last matching pattern instead of the first. g flag MUST BE PROVIDED for regexp or this function won't work.
  */
-export const searchRightWithPos: {
-	(regexp: RegExp): (self: string) => Option.Option<SearchResult>;
-	(self: string, regexp: RegExp): Option.Option<SearchResult>;
-} = Function.dual(
-	2,
-	(self: string, regexp: RegExp): Option.Option<SearchResult> =>
-		pipe(self, searchAllWithPos(regexp), Chunk.last)
-);
+export const searchRightWithPos =
+	(regexp: RegExp) =>
+	(self: string): Option.Option<SearchResult> =>
+		pipe(self, searchAllWithPos(regexp), Chunk.last);
 
 /**
  * Looks from the left for the first substring of self that matches regexp and returns all characters before that substring. If no occurence is found, returns self
  */
-export const takeLeftTo: {
-	(regexp: RegExp | string): (self: string) => string;
-	(self: string, regexp: RegExp | string): string;
-} = Function.dual(2, (self: string, regexp: RegExp | string): string =>
-	pipe(
-		self,
-		String.search(regexp),
-		Option.getOrElse(() => self.length),
-		(pos) => String.takeLeft(self, pos)
-	)
-);
+export const takeLeftTo =
+	(regexp: RegExp | string) =>
+	(self: string): string =>
+		pipe(
+			self,
+			String.search(regexp),
+			Option.getOrElse(() => self.length),
+			(pos) => String.takeLeft(self, pos)
+		);
 
 /**
  * Looks from the right for the first substring of self that matches target and returns all characters after that substring. If no occurence is found, returns self. g flag MUST BE PROVIDED for regexp or this function won't work.
  */
-export const takeRightFrom: {
-	(regexp: RegExp): (self: string) => string;
-	(self: string, regexp: RegExp): string;
-} = Function.dual(2, (self: string, regexp: RegExp): string =>
-	pipe(
-		self,
-		searchRightWithPos(regexp),
-		Option.map((searchItem) => searchItem.endIndex),
-		Option.getOrElse(() => 0),
-		(pos) => String.slice(pos)(self)
-	)
-);
+export const takeRightFrom =
+	(regexp: RegExp) =>
+	(self: string): string =>
+		pipe(
+			self,
+			searchRightWithPos(regexp),
+			Option.map((searchItem) => searchItem.endIndex),
+			Option.getOrElse(() => 0),
+			(pos) => String.slice(pos)(self)
+		);
 
 /**
  * If successful, returns a right containing copy of self where all words matching the target RegExp are replaced by the replacements provided in the ReplacementMap. Return a left if self contains a pattern matching the target RegExp not present in ReplacementMap. Also returns a left if checkAllUsed is set and some of the values in ReplacementMap were not used
@@ -126,7 +118,7 @@ export const takeRightFrom: {
  * @param self The template
  * @returns an Either
  */
-export const templater: {
+export const templater =
 	<
 		O extends {
 			readonly checkAllUsed: boolean;
@@ -135,29 +127,8 @@ export const templater: {
 		target: RegExp,
 		replacementMap: HashMap.HashMap<string, string>,
 		options?: O
-	): (self: string) => Either.Either<MError.General, string>;
-	<
-		O extends {
-			readonly checkAllUsed?: boolean;
-		}
-	>(
-		self: string,
-		target: RegExp,
-		replacementMap: HashMap.HashMap<string, string>,
-		options?: O
-	): Either.Either<MError.General, string>;
-} = Function.dual(
-	4,
-	<
-		O extends {
-			readonly checkAllUsed?: boolean;
-		}
-	>(
-		self: string,
-		target: RegExp,
-		replacementMap: HashMap.HashMap<string, string>,
-		options?: O
-	): Either.Either<MError.General, string> => {
+	) =>
+	(self: string): Either.Either<MError.General, string> => {
 		const foundSet = MutableHashSet.empty<string>();
 		let notFound = '';
 		const result = self.replace(target, (match) => {
@@ -193,8 +164,7 @@ export const templater: {
 				})
 			);
 		else return Either.right(result);
-	}
-);
+	};
 
 /**
  * Returns a some of the result of calling the toString method on obj provided it defines one different from Object.prototype.toString. If toString is not defined or not overloaded, it returns a some of the result of calling the toJson function on obj provided it defines one. If toString and toJson are not defined, returns a none.
@@ -220,52 +190,44 @@ export const tryToStringToJson = (
  *
  * @category error handling
  */
-export const orElse: {
-	(that: Function.LazyArg<string>): (self: string) => string;
-	(self: string, that: Function.LazyArg<string>): string;
-} = Function.dual(2, (self: string, that: Function.LazyArg<string>): string =>
-	String.isEmpty(self) ? that() : self
-);
+export const orElse =
+	(that: Function.LazyArg<string>) =>
+	(self: string): string =>
+		String.isEmpty(self) ? that() : self;
 
 /**
  * Takes all characters from self except the n last characters
  */
-export const takeLeftBut: {
-	(n: number): (self: string) => string;
-	(self: string, n: number): string;
-} = Function.dual(2, (self: string, n: number): string =>
-	String.takeLeft(self, self.length - n)
-);
+export const takeLeftBut =
+	(n: number) =>
+	(self: string): string =>
+		String.takeLeft(self, self.length - n);
 
 /**
  * Takes all characters from self except the n first characters
  */
-export const takeRightBut: {
-	(n: number): (self: string) => string;
-	(self: string, n: number): string;
-} = Function.dual(2, (self: string, n: number): string =>
-	String.takeRight(self, self.length - n)
-);
+export const takeRightBut =
+	(n: number) =>
+	(self: string): string =>
+		String.takeRight(self, self.length - n);
 
 /**
  * If self starts with s, returns self stripped of s. Otherwise, returns s
  */
-export const stripLeft: {
-	(s: string): (self: string) => string;
-	(self: string, s: string): string;
-} = Function.dual(2, (self: string, s: string): string =>
-	pipe(self, String.startsWith(s)) ? takeRightBut(self, s.length) : self
-);
+export const stripLeft =
+	(s: string) =>
+	(self: string): string =>
+		pipe(self, String.startsWith(s))
+			? pipe(self, takeRightBut(s.length))
+			: self;
 
 /**
  * If self ends with s, returns self stripped of s. Otherwise, returns s
  */
-export const stripRight: {
-	(s: string): (self: string) => string;
-	(self: string, s: string): string;
-} = Function.dual(2, (self: string, s: string): string =>
-	pipe(self, String.endsWith(s)) ? takeLeftBut(self, s.length) : self
-);
+export const stripRight =
+	(s: string) =>
+	(self: string): string =>
+		pipe(self, String.endsWith(s)) ? pipe(self, takeLeftBut(s.length)) : self;
 
 /**
  * Counts the number of occurences of regexp in self. Throws if g flag is not set

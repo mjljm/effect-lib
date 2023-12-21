@@ -159,34 +159,22 @@ export const unfoldEither = <E, A, B>(
  *
  * @category folding
  */
-export const fold: {
-	<A, B>(
-		f: (a: A, bs: Chunk.Chunk<B>, level: number) => B
-	): (self: Tree<A>) => B;
-	<A, B>(self: Tree<A>, f: (a: A, bs: Chunk.Chunk<B>, level: number) => B): B;
-} = Function.dual(
-	2,
-	<A, B>(
-		self: Tree<A>,
-		f: (a: A, bs: Chunk.Chunk<B>, level: number) => B
-	): B => {
+export const fold =
+	<A, B>(f: (a: A, bs: Chunk.Chunk<B>, level: number) => B) =>
+	(self: Tree<A>): B => {
 		const go =
 			(level: number) =>
 			(fa: Tree<A>): B =>
 				f(fa.value, Chunk.map(fa.forest, go(level + 1)), level);
 		return go(0)(self);
-	}
-);
+	};
 
 /**
  * @category sequencing
  */
-export const flatMap: {
-	<A, B>(f: (a: A, level: number) => Tree<B>): (self: Tree<A>) => Tree<B>;
-	<A, B>(self: Tree<A>, f: (a: A, level: number) => Tree<B>): Tree<B>;
-} = Function.dual(
-	2,
-	<A, B>(self: Tree<A>, f: (a: A, level: number) => Tree<B>): Tree<B> => {
+export const flatMap =
+	<A, B>(f: (a: A, level: number) => Tree<B>) =>
+	(self: Tree<A>): Tree<B> => {
 		const go =
 			(level: number) =>
 			(self: Tree<A>): Tree<B> => {
@@ -198,18 +186,14 @@ export const flatMap: {
 				};
 			};
 		return go(0)(self);
-	}
-);
+	};
 
 /**
  * Returns a new tree in which the value of each node is replaced by the result of a function that takes the node as parameter in top-down order. More powerful than map which takes only the value of the node as parameter
  */
-export const extendDown: {
-	<A, B>(f: (fa: Tree<A>, level: number) => B): (self: Tree<A>) => Tree<B>;
-	<A, B>(self: Tree<A>, f: (fa: Tree<A>, level: number) => B): Tree<B>;
-} = Function.dual(
-	2,
-	<A, B>(self: Tree<A>, f: (fa: Tree<A>, level: number) => B): Tree<B> => {
+export const extendDown =
+	<A, B>(f: (fa: Tree<A>, level: number) => B) =>
+	(self: Tree<A>): Tree<B> => {
 		const go =
 			(level: number) =>
 			(self: Tree<A>): Tree<B> => ({
@@ -217,18 +201,14 @@ export const extendDown: {
 				forest: Chunk.map(self.forest, go(level + 1))
 			});
 		return go(0)(self);
-	}
-);
+	};
 
 /**
  * Returns a new tree in which the value of each node is replaced by the result of a function that takes the node as parameter in bottom-up order. More powerful than map which takes only the value of the node as parameter
  */
-export const extendUp: {
-	<A, B>(f: (fa: Tree<A>, level: number) => B): (self: Tree<A>) => Tree<B>;
-	<A, B>(self: Tree<A>, f: (fa: Tree<A>, level: number) => B): Tree<B>;
-} = Function.dual(
-	2,
-	<A, B>(self: Tree<A>, f: (fa: Tree<A>, level: number) => B): Tree<B> => {
+export const extendUp =
+	<A, B>(f: (fa: Tree<A>, level: number) => B) =>
+	(self: Tree<A>): Tree<B> => {
 		const go =
 			(level: number) =>
 			(self: Tree<A>): Tree<B> => ({
@@ -236,8 +216,7 @@ export const extendUp: {
 				value: f(self, level)
 			});
 		return go(0)(self);
-	}
-);
+	};
 
 /**
  */
@@ -256,12 +235,9 @@ export const flatten: <A>(self: Tree<Tree<A>>) => Tree<A> = flatMap(
  *
  * @category mapping
  */
-export const map: {
-	<A, B>(f: (a: A, level: number) => B): (self: Tree<A>) => Tree<B>;
-	<A, B>(self: Tree<A>, f: (a: A, level: number) => B): Tree<B>;
-} = Function.dual(
-	2,
-	<A, B>(self: Tree<A>, f: (a: A, level: number) => B): Tree<B> => {
+export const map =
+	<A, B>(f: (a: A, level: number) => B) =>
+	(self: Tree<A>): Tree<B> => {
 		const go =
 			(level: number) =>
 			(self: Tree<A>): Tree<B> => ({
@@ -269,19 +245,15 @@ export const map: {
 				forest: Chunk.map(self.forest, go(level + 1))
 			});
 		return go(0)(self);
-	}
-);
+	};
 
 /**
  * Top-down reduction - Children are processed from left to right
  * @category folding
  */
-export const reduce: {
-	<A, B>(b: B, f: (b: B, a: A, level: number) => B): (self: Tree<A>) => B;
-	<A, B>(self: Tree<A>, b: B, f: (b: B, a: A, level: number) => B): B;
-} = Function.dual(
-	3,
-	<A, B>(self: Tree<A>, b: B, f: (b: B, a: A, level: number) => B): B => {
+export const reduce =
+	<A, B>(b: B, f: (b: B, a: A, level: number) => B) =>
+	(self: Tree<A>): B => {
 		const go =
 			(b: B, level: number) =>
 			(self: Tree<A>): B => {
@@ -293,38 +265,27 @@ export const reduce: {
 				return r;
 			};
 		return go(b, 0)(self);
-	}
-);
+	};
 
 /**
  * Reduce using a monoid to perform the concatenation
  * @category folding
  */
-export const foldMap: {
-	<B, A>(
-		M: Monoid.Monoid<B>,
-		f: (a: A, level: number) => B
-	): (self: Tree<A>) => B;
-	<B, A>(self: Tree<A>, M: Monoid.Monoid<B>, f: (a: A, level: number) => B): B;
-} = Function.dual(
-	3,
-	<B, A>(
-		self: Tree<A>,
-		M: Monoid.Monoid<B>,
-		f: (a: A, level: number) => B
-	): B => reduce(self, M.empty, (acc, a, level) => M.combine(acc, f(a, level)))
-);
+export const foldMap =
+	<B, A>(M: Monoid.Monoid<B>, f: (a: A, level: number) => B) =>
+	(self: Tree<A>): B =>
+		pipe(
+			self,
+			reduce(M.empty, (acc, a, level) => M.combine(acc, f(a, level)))
+		);
 
 /**
  * Top-down reduction - Children are processed from right to left
  * @category folding
  */
-export const reduceRight: {
-	<A, B>(b: B, f: (b: B, a: A, level: number) => B): (self: Tree<A>) => B;
-	<A, B>(self: Tree<A>, b: B, f: (b: B, a: A, level: number) => B): B;
-} = Function.dual(
-	3,
-	<A, B>(self: Tree<A>, b: B, f: (b: B, a: A, level: number) => B): B => {
+export const reduceRight =
+	<A, B>(b: B, f: (b: B, a: A, level: number) => B) =>
+	(self: Tree<A>): B => {
 		const go =
 			(b: B, level: number) =>
 			(self: Tree<A>): B => {
@@ -336,5 +297,4 @@ export const reduceRight: {
 				return r;
 			};
 		return go(b, 0)(self);
-	}
-);
+	};

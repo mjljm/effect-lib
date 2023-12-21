@@ -1,40 +1,28 @@
 import { MError, MFiberId, MFunction } from '#mjljm/effect-lib/index';
 import { ANSI, StringUtils } from '@mjljm/js-lib';
-import { Cause, Function, String, pipe } from 'effect';
+import { Cause, String, pipe } from 'effect';
 
-export const toJson: {
-	(
-		srcDirPath: string,
-		stringify: (u: unknown) => string,
-		tabChar?: string | undefined
-	): (self: Cause.Cause<unknown>) => string;
-	(
-		self: Cause.Cause<unknown>,
-		srcDirPath: string,
-		stringify: (u: unknown) => string,
-		tabChar?: string | undefined
-	): string;
-} = Function.dual(
-	4,
-	(
-		self: Cause.Cause<unknown>,
-		srcDirPath: string,
-		stringify: (u: unknown) => string,
-		tabChar: string = '  '
-	): string =>
+export const toJson =
+	(srcDirPath: string, stringify: (u: unknown) => string, tabChar = '  ') =>
+	(self: Cause.Cause<unknown>): string =>
 		Cause.match(self, {
 			onEmpty: '',
 			onFail: (error) =>
 				pipe(
 					MFunction.isErrorish(error)
-						? ANSI.red(MError.formatErrorWithStackTrace(error, srcDirPath))
+						? ANSI.red(
+								pipe(error, MError.formatErrorWithStackTrace(srcDirPath))
+						  )
 						: '',
 					(message) =>
 						MError.isWithOriginalCause(error)
 							? message +
 							  '\n' +
 							  StringUtils.tabify(
-									toJson(error.originalCause, srcDirPath, stringify, tabChar),
+									pipe(
+										error.originalCause,
+										toJson(srcDirPath, stringify, tabChar)
+									),
 									tabChar
 							  )
 							: ANSI.red('SCRIPT FAILED WITH ERROR(S):\n') +
@@ -57,5 +45,4 @@ export const toJson: {
 				left === '' ? right : right === '' ? left : `${left}\n${right}`,
 			onParallel: (left, right) =>
 				left === '' ? right : right === '' ? left : `${left}\n${right}`
-		})
-);
+		});

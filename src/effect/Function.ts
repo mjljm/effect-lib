@@ -1,6 +1,5 @@
 import { EqValue } from '#mjljm/effect-lib/index';
 import {
-	Effect,
 	Equivalence,
 	MutableHashMap,
 	MutableList,
@@ -38,7 +37,7 @@ import {
 	options.predicate(initial) ? whileDoRecursive(options.step(initial), options) : initial;*/
 
 /**
- * Function that takes an initial state and runs it through a step until the result stops meeting the predicate (the predicate is executed at start of loop). The final state is returned. Exists in predicate and refinement version.
+ * Function that takes an initial state and runs it through a step until the result stops meeting the predicate (the predicate is executed at start of loop). The final state is returned. Exists in predicate and refinement version. DO NOT USE
  */
 export const whileDo: {
 	<A, B extends A>(
@@ -113,7 +112,7 @@ const whileDoAccumRecursiveInternal = <A, B>(
 		: List.empty();*/
 
 /**
- * Function that takes an initial state and, on the one hand, runs it through a body keeping each result and, on the other and, runs it through a step function until the result stops meeting the predicate. The array of all body results is returned. Exists in predicate and refinement version. Same as loop but coded without recursion
+ * Function that takes an initial state and, on the one hand, runs it through a body keeping each result and, on the other and, runs it through a step function until the result stops meeting the predicate. The array of all body results is returned. Exists in predicate and refinement version. Same as loop but coded without recursion. DO NOT USE
  */
 export const whileDoAccum: {
 	<A, B, C extends B>(
@@ -150,7 +149,7 @@ export const whileDoAccum: {
 };
 
 /**
- * Function that takes an initial state and runs it through a step until the result stops meeting the predicate (the predicate is executed at start of loop). The final state is returned. Exists in predicate and refinement version.
+ * Function that takes an initial state and runs it through a step until the result stops meeting the predicate (the predicate is executed at start of loop). The final state is returned. Exists in predicate and refinement version. DO NOT USE
  */
 export const doWhile: {
 	<A, B extends A>(
@@ -182,7 +181,7 @@ export const doWhile: {
 };
 
 /**
- * Function that takes an initial state and, on the one hand, runs it through a body keeping each result and, on the other and, runs it through a step function until the result stops meeting the predicate. The array of all body results is returned. Exists in predicate and refinement version.
+ * Function that takes an initial state and, on the one hand, runs it through a body keeping each result and, on the other and, runs it through a step function until the result stops meeting the predicate. The array of all body results is returned. Exists in predicate and refinement version. DO NOT USE
  */
 export const doWhileAccum: {
 	<A, B, C extends B>(
@@ -219,7 +218,7 @@ export const doWhileAccum: {
 	} while (cont);
 	return Array.from(result);
 };
-Effect.cachedFunction;
+
 /**
  * Function to memoize a function that takes an A and returns a B
  */
@@ -243,6 +242,15 @@ export const memoize = <A, B>(
  * Function that takes an object of type A and return an object of type Readonly<A>
  */
 export const makeReadonly: <A>(s: A) => Readonly<A> = identity;
+
+/**
+ * Type qui transforme une union en inetrsection
+ */
+export type UnionToIntersection<U> = (
+	U extends unknown ? (k: U) => void : never
+) extends (k: infer I) => void
+	? I
+	: never;
 
 /**
  * Type qui représente un vrai objet (pas un tableau, pas une fonction, pas une valeur nulle ou undefined). Typescript considère que les instances de classe ne répondent pas à cette définition. Alors qu'elles y répondent.

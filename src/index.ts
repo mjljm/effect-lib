@@ -8,7 +8,6 @@ export * as MFunction from '#mjljm/effect-lib/effect/Function';
 export * as IoLogger from '#mjljm/effect-lib/effect/IoLogger';
 export * as MMatch from '#mjljm/effect-lib/effect/Match';
 export * as MOption from '#mjljm/effect-lib/effect/Option';
-export * as MPredicate from '#mjljm/effect-lib/effect/Predicate';
 export * as MReadonlyArray from '#mjljm/effect-lib/effect/ReadonlyArray';
 export * as MSchema from '#mjljm/effect-lib/effect/Schema';
 export * as MString from '#mjljm/effect-lib/effect/String';

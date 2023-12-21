@@ -1,8 +1,8 @@
 import {
 	EqValue,
 	MCause,
+	MEffect,
 	MError,
-	MPredicate,
 	Tree
 } from '#mjljm/effect-lib/index';
 import { ANSI, StringUtils } from '@mjljm/js-lib';
@@ -13,7 +13,6 @@ import {
 	Either,
 	Equal,
 	Equivalence,
-	Function,
 	Hash,
 	HashSet,
 	List,
@@ -22,30 +21,18 @@ import {
 	pipe
 } from 'effect';
 import { Concurrency } from 'effect/Types';
+
+export interface PredicateEffect<in Z, out R, out E> {
+	(x: Z): Effect.Effect<R, E, boolean>;
+}
+
 /**
  * Clears the error channel after logging all possible causes
  */
-export const clearAndLogAllCauses: {
-	(
-		srcDirPath: string,
-		stringify: (u: unknown) => string,
-		tabChar?: string | undefined
-	): <R, E extends MError.WithOriginalCause, A>(
+export const clearAndLogAllCauses =
+	(srcDirPath: string, stringify: (u: unknown) => string, tabChar?: string) =>
+	<R, E extends MError.WithOriginalCause, A>(
 		self: Effect.Effect<R, E, A>
-	) => Effect.Effect<R, never, A | void>;
-	<R, E extends MError.WithOriginalCause, A>(
-		self: Effect.Effect<R, E, A>,
-		srcDirPath: string,
-		stringify: (u: unknown) => string,
-		tabChar?: string | undefined
-	): Effect.Effect<R, never, A | void>;
-} = Function.dual(
-	3,
-	<R, E extends MError.WithOriginalCause, A>(
-		self: Effect.Effect<R, E, A>,
-		srcDirPath: string,
-		stringify: (u: unknown) => string,
-		tabChar = '  '
 	): Effect.Effect<R, never, A | void> =>
 		Effect.catchAllCause(self, (c) =>
 			pipe(c, MCause.toJson(srcDirPath, stringify, tabChar), (errorText) =>
@@ -55,16 +42,15 @@ export const clearAndLogAllCauses: {
 							ANSI.red('SCRIPT FAILED\n') + StringUtils.tabify(errorText)
 					  )
 			)
-		)
-);
+		);
 
 /**
- * Same as Effect.Iterable but both predicate and step are effectful
+ * Same as Effect.Iterable but both predicate and step are effectful. DO NOT USE
  */
 export const whileDo = <Z, R1, E1, R2, E2>(
 	initial: Z,
 	options: {
-		readonly predicate: MPredicate.PredicateEffect<Z, R1, E1>;
+		readonly predicate: MEffect.PredicateEffect<Z, R1, E1>;
 		readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
 	}
 ): Effect.Effect<R1 | R2, E1 | E2, Z> =>
@@ -77,13 +63,13 @@ export const whileDo = <Z, R1, E1, R2, E2>(
 	);
 
 /**
- * Same as WhileDo but the first step is executed before the predicate
+ * Same as WhileDo but the first step is executed before the predicate - DO NOT USE
  */
 export const doWhile = <Z, R1, E1, R2, E2>(
 	initial: Z,
 	options: {
 		readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
-		readonly predicate: MPredicate.PredicateEffect<Z, R1, E1>;
+		readonly predicate: MEffect.PredicateEffect<Z, R1, E1>;
 	}
 ): Effect.Effect<R1 | R2, E1 | E2, Z> =>
 	Effect.suspend(() =>
@@ -96,7 +82,7 @@ export const doWhile = <Z, R1, E1, R2, E2>(
 	);
 
 /**
- * Same as Effect.loop but step, predicate and body are effectful
+ * Same as Effect.loop but step, predicate and body are effectful - DO NOT USE
  */
 
 // @ts-expect-error Same error as in core-effect.ts
@@ -105,7 +91,7 @@ export const whileDoAccum: {
 		initial: Z,
 		options: {
 			readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
-			readonly predicate: MPredicate.PredicateEffect<Z, R1, E1>;
+			readonly predicate: MEffect.PredicateEffect<Z, R1, E1>;
 			readonly body: (z: Z) => Effect.Effect<R3, E3, A>;
 			readonly discard?: false;
 		}
@@ -114,7 +100,7 @@ export const whileDoAccum: {
 		initial: Z,
 		options: {
 			readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
-			readonly while: MPredicate.PredicateEffect<Z, R1, E1>;
+			readonly while: MEffect.PredicateEffect<Z, R1, E1>;
 			readonly body: (z: Z) => Effect.Effect<R3, E3, A>;
 			readonly discard: true;
 		}
@@ -123,7 +109,7 @@ export const whileDoAccum: {
 	initial: Z,
 	options: {
 		readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
-		readonly while: MPredicate.PredicateEffect<Z, R1, E1>;
+		readonly while: MEffect.PredicateEffect<Z, R1, E1>;
 		readonly body: (z: Z) => Effect.Effect<R3, E3, A>;
 		readonly discard?: boolean;
 	}
@@ -139,7 +125,7 @@ export const whileDoAccum: {
 
 const loopInternal = <Z, R1, E1, R2, E2, R3, E3, A>(
 	initial: Z,
-	cont: MPredicate.PredicateEffect<Z, R1, E1>,
+	cont: MEffect.PredicateEffect<Z, R1, E1>,
 	inc: (z: Z) => Effect.Effect<R2, E2, Z>,
 	body: (z: Z) => Effect.Effect<R3, E3, A>
 ): Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, List.List<A>> =>
@@ -156,7 +142,7 @@ const loopInternal = <Z, R1, E1, R2, E2, R3, E3, A>(
 
 const loopDiscard = <Z, R1, E1, R2, E2, R3, E3, A>(
 	initial: Z,
-	cont: MPredicate.PredicateEffect<Z, R1, E1>,
+	cont: MEffect.PredicateEffect<Z, R1, E1>,
 	inc: (z: Z) => Effect.Effect<R2, E2, Z>,
 	body: (z: Z) => Effect.Effect<R3, E3, A>
 ): Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, void> =>
@@ -228,22 +214,10 @@ export const filterOption: {
 	): <R, E>(
 		self: Effect.Effect<R, E, A>
 	) => Effect.Effect<R, E, Option.Option<A>>;
-	<R, E, A, B extends A>(
-		self: Effect.Effect<R, E, A>,
-		refinement: Predicate.Refinement<A, B>
-	): Effect.Effect<R, E, Option.Option<B>>;
-	<R, E, A>(
-		self: Effect.Effect<R, E, A>,
-		predicate: Predicate.Predicate<A>
-	): Effect.Effect<R, E, Option.Option<A>>;
-} = Function.dual(
-	2,
-	<R, E, A>(
-		self: Effect.Effect<R, E, A>,
-		predicate: Predicate.Predicate<A>
-	): Effect.Effect<R, E, Option.Option<A>> =>
-		Effect.map(self, (a) => (predicate(a) ? Option.some(a) : Option.none()))
-);
+} =
+	<A>(predicate: Predicate.Predicate<A>) =>
+	<R, E>(self: Effect.Effect<R, E, A>) =>
+		Effect.map(self, (a) => (predicate(a) ? Option.some(a) : Option.none()));
 
 /**
  * Effectful Tree.unfoldTree

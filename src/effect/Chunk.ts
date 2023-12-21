@@ -29,43 +29,22 @@ export const getSingleton = <A>(self: Chunk.Chunk<A>): Option.Option<A> =>
  *
  * @category getters
  * */
-export const getSingletonOrElse: {
-	<B>(
-		error: Function.LazyArg<B>
-	): <A>(self: Chunk.Chunk<A>) => Either.Either<B, Option.Option<A>>;
-	<A, B>(
-		self: Chunk.Chunk<A>,
-		error: Function.LazyArg<B>
-	): Either.Either<B, Option.Option<A>>;
-} = Function.dual(
-	2,
-	<A, B>(
-		self: Chunk.Chunk<A>,
-		error: Function.LazyArg<B>
-	): Either.Either<B, Option.Option<A>> =>
-		self.length > 1 ? Either.left(error()) : Either.right(Chunk.get(self, 0))
-);
+export const getSingletonOrElse =
+	<B>(error: Function.LazyArg<B>) =>
+	<A>(self: Chunk.Chunk<A>): Either.Either<B, Option.Option<A>> =>
+		self.length > 1 ? Either.left(error()) : Either.right(Chunk.get(self, 0));
 
 /**
  * Throws if self contains more than one element. Returns a none if self contains no element and a some of the only element otherwise
  *
  * @category getters
  * */
-export const getSingletonOrThrowWith: {
-	<B>(
-		error: Function.LazyArg<B>
-	): <A>(self: Chunk.Chunk<A>) => Option.Option<A>;
-	<A, B>(self: Chunk.Chunk<A>, error: Function.LazyArg<B>): Option.Option<A>;
-} = Function.dual(
-	2,
-	<A, B>(
-		self: Chunk.Chunk<A>,
-		error: Function.LazyArg<B>
-	): Option.Option<A> => {
+export const getSingletonOrThrowWith =
+	<B>(error: Function.LazyArg<B>) =>
+	<A>(self: Chunk.Chunk<A>): Option.Option<A> => {
 		if (self.length > 1) throw error();
 		return Chunk.get(self, 0);
-	}
-);
+	};
 
 /**
  * Looks for elements that fulfill the predicate. Returns `none` in case no element or more than
@@ -74,28 +53,17 @@ export const getSingletonOrThrowWith: {
  * @category getters
  * @since 1.0.0
  */
-export const findSingleton = Function.dual<
-	{
-		<A, B extends A>(
-			refinement: Predicate.Refinement<A, B>
-		): (self: Chunk.Chunk<A>) => Option.Option<B>;
-		<A>(
-			predicate: Predicate.Predicate<A>
-		): (self: Chunk.Chunk<A>) => Option.Option<A>;
-	},
-	{
-		<A, B extends A>(
-			self: Chunk.Chunk<A>,
-			refinement: Predicate.Refinement<A, B>
-		): Option.Option<B>;
-		<A>(
-			self: Chunk.Chunk<A>,
-			predicate: Predicate.Predicate<A>
-		): Option.Option<A>;
-	}
->(2, <A>(self: Chunk.Chunk<A>, predicate: Predicate.Predicate<A>) =>
-	pipe(self, Chunk.filter(predicate), getSingleton)
-);
+export const findSingleton: {
+	<A, B extends A>(
+		refinement: Predicate.Refinement<A, B>
+	): (self: Chunk.Chunk<A>) => Option.Option<B>;
+	<A>(
+		predicate: Predicate.Predicate<A>
+	): (self: Chunk.Chunk<A>) => Option.Option<A>;
+} =
+	<A>(predicate: Predicate.Predicate<A>) =>
+	(self: Chunk.Chunk<A>) =>
+		pipe(self, Chunk.filter(predicate), getSingleton);
 
 /**
  * Split a chunk A in two arrays [B,C], B containing all the elements at even indexes, C all elements at odd indexes
@@ -117,66 +85,35 @@ export const splitOddEvenIndexes = <A>(
  *
  * @since 1.0.0
  */
-export const findAll: {
-	<B extends A, A = B>(
-		predicate: Predicate.Predicate<A>
-	): (self: Iterable<B>) => Chunk.Chunk<number>;
-	<B extends A, A = B>(
-		self: Iterable<B>,
-		predicate: Predicate.Predicate<A>
-	): Chunk.Chunk<number>;
-} = Function.dual(
-	2,
-	<B extends A, A = B>(
-		self: Iterable<B>,
-		predicate: Predicate.Predicate<A>
-	): Chunk.Chunk<number> =>
+export const findAll =
+	<B extends A, A = B>(predicate: Predicate.Predicate<A>) =>
+	(self: Iterable<B>): Chunk.Chunk<number> =>
 		ReadonlyArray.reduce(self, Chunk.empty<number>(), (acc, a, i) =>
 			predicate(a) ? Chunk.append(acc, i) : acc
-		)
-);
+		);
 
 /**
  * Returns the provided `Chunk` `that` if `self` is empty, otherwise returns `self`.
  *
  * @category error handling
  */
-export const orElse: {
-	<B>(
-		that: Function.LazyArg<Chunk.Chunk<B>>
-	): <A>(self: Chunk.Chunk<A>) => Chunk.Chunk<B | A>;
-	<A, B>(
-		self: Chunk.Chunk<A>,
-		that: Function.LazyArg<Chunk.Chunk<B>>
-	): Chunk.Chunk<A | B>;
-} = Function.dual(
-	2,
-	<A, B>(
-		self: Chunk.Chunk<A>,
-		that: Function.LazyArg<Chunk.Chunk<B>>
-	): Chunk.Chunk<A | B> => (Chunk.isEmpty(self) ? that() : self)
-);
+export const orElse =
+	<B>(that: Function.LazyArg<Chunk.Chunk<B>>) =>
+	<A>(self: Chunk.Chunk<A>): Chunk.Chunk<B | A> =>
+		Chunk.isEmpty(self) ? that() : self;
 
 /**
  * Takes all elements of self except the n last elements
  */
-export const takeBut: {
-	(n: number): <A>(self: Chunk.Chunk<A>) => Chunk.Chunk<A>;
-	<A>(self: Chunk.Chunk<A>, n: number): Chunk.Chunk<A>;
-} = Function.dual(
-	2,
-	<A>(self: Chunk.Chunk<A>, n: number): Chunk.Chunk<A> =>
-		Chunk.take(self, Chunk.size(self) - n)
-);
+export const takeBut =
+	(n: number) =>
+	<A>(self: Chunk.Chunk<A>): Chunk.Chunk<A> =>
+		Chunk.take(self, Chunk.size(self) - n);
 
 /**
  * Takes all elements of self except the n first elements
  */
-export const takeRightBut: {
-	(n: number): <A>(self: Chunk.Chunk<A>) => Chunk.Chunk<A>;
-	<A>(self: Chunk.Chunk<A>, n: number): Chunk.Chunk<A>;
-} = Function.dual(
-	2,
-	<A>(self: Chunk.Chunk<A>, n: number): Chunk.Chunk<A> =>
-		Chunk.takeRight(self, Chunk.size(self) - n)
-);
+export const takeRightBut =
+	(n: number) =>
+	<A>(self: Chunk.Chunk<A>): Chunk.Chunk<A> =>
+		Chunk.takeRight(self, Chunk.size(self) - n);

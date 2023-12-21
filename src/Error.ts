@@ -1,15 +1,7 @@
 import { MFunction, MString } from '#mjljm/effect-lib/index';
 import { ArrayFormatter, ParseResult } from '@effect/schema';
 import { ANSI, RegExpUtils, StringUtils } from '@mjljm/js-lib';
-import {
-	Cause,
-	Data,
-	Function,
-	Option,
-	ReadonlyArray,
-	String,
-	pipe
-} from 'effect';
+import { Cause, Data, Option, ReadonlyArray, String, pipe } from 'effect';
 
 // Use TaggedError to get a stack trace (because TaggedError extends Error)
 export class FunctionPort extends Data.TaggedError('FunctionPort')<{
@@ -69,12 +61,9 @@ export class WithOriginalCause extends Data.TaggedError('WithOriginalCause')<{
 export const isWithOriginalCause = (u: unknown): u is WithOriginalCause =>
 	u instanceof WithOriginalCause;
 
-export const formatErrorWithStackTrace: {
-	<A extends MFunction.Errorish>(root: string): (self: A) => string;
-	<A extends MFunction.Errorish>(self: A, root: string): string;
-} = Function.dual(
-	2,
-	<A extends MFunction.Errorish>(self: A, root: string): string =>
+export const formatErrorWithStackTrace =
+	<A extends MFunction.Errorish>(root: string) =>
+	(self: A): string =>
 		self.stack
 			? pipe(
 					self.stack,
@@ -102,8 +91,7 @@ export const formatErrorWithStackTrace: {
 							Option.getOrElse(() => self.message + ' ' + lastError)
 						)
 			  )
-			: self.message
-);
+			: self.message;
 
 export const showUncaughtErrorAndExit = ({
 	message,
@@ -121,7 +109,7 @@ export const showUncaughtErrorAndExit = ({
 			StringUtils.tabify(
 				ANSI.red('Error:\n') +
 					(MFunction.isErrorish(error)
-						? formatErrorWithStackTrace(error, srcDirPath)
+						? pipe(error, formatErrorWithStackTrace(srcDirPath))
 						: stringify(error))
 			) +
 			'\n\n'

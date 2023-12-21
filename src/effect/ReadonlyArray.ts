@@ -23,21 +23,12 @@ export const hasDuplicates = <A>(self: ReadonlyArray<A>): boolean =>
  * @category utils
  * @since 1.0.0
  */
-export const hasDuplicatesWith: {
-	<A>(
-		isEquivalent: (self: A, that: A) => boolean
-	): (self: ReadonlyArray<A>) => boolean;
-	<A>(
-		self: ReadonlyArray<A>,
-		isEquivalent: (self: A, that: A) => boolean
-	): boolean;
-} = Function.dual(
-	2,
-	<A>(self: ReadonlyArray<A>, isEquivalent: (self: A, that: A) => boolean) =>
+export const hasDuplicatesWith =
+	<A>(isEquivalent: (self: A, that: A) => boolean) =>
+	(self: ReadonlyArray<A>): boolean =>
 		pipe(self, ReadonlyArray.dedupeWith(isEquivalent), (as) =>
 			as.length === self.length ? false : true
-		)
-);
+		);
 
 /**
  * Returns none if self contains zero or more than one element. Returns a some of the only element of the array otherwise.
@@ -52,45 +43,24 @@ export const getSingleton = <A>(self: ReadonlyArray<A>): Option.Option<A> =>
  *
  * @category getters
  * */
-export const getSingletonOrElse: {
-	<B>(
-		error: Function.LazyArg<B>
-	): <A>(self: ReadonlyArray<A>) => Either.Either<B, Option.Option<A>>;
-	<A, B>(
-		self: ReadonlyArray<A>,
-		error: Function.LazyArg<B>
-	): Either.Either<B, Option.Option<A>>;
-} = Function.dual(
-	2,
-	<A, B>(
-		self: ReadonlyArray<A>,
-		error: Function.LazyArg<B>
-	): Either.Either<B, Option.Option<A>> =>
+export const getSingletonOrElse =
+	<B>(error: Function.LazyArg<B>) =>
+	<A>(self: ReadonlyArray<A>): Either.Either<B, Option.Option<A>> =>
 		self.length > 1
 			? Either.left(error())
-			: Either.right(ReadonlyArray.get(self, 0))
-);
+			: Either.right(ReadonlyArray.get(self, 0));
 
 /**
  * Throws if self contains more than one element. Returns a none if self contains no element and a some of the only element otherwise
  *
  * @category getters
  * */
-export const getSingletonOrThrowWith: {
-	<B>(
-		error: Function.LazyArg<B>
-	): <A>(self: ReadonlyArray<A>) => Option.Option<A>;
-	<A, B>(self: ReadonlyArray<A>, error: Function.LazyArg<B>): Option.Option<A>;
-} = Function.dual(
-	2,
-	<A, B>(
-		self: ReadonlyArray<A>,
-		error: Function.LazyArg<B>
-	): Option.Option<A> => {
+export const getSingletonOrThrowWith =
+	<B>(error: Function.LazyArg<B>) =>
+	<A>(self: ReadonlyArray<A>): Option.Option<A> => {
 		if (self.length > 1) throw error();
 		return ReadonlyArray.get(self, 0);
-	}
-);
+	};
 
 /**
  * Looks for the elements that fulfill the predicate. Returns `none` in case no element or more than
@@ -98,33 +68,17 @@ export const getSingletonOrThrowWith: {
  *
  * @category getters
  */
-export const findSingleton = Function.dual<
-	{
-		<A, B extends A>(
-			refinement: (a: A, i: number) => a is B
-		): (self: Iterable<A>) => Option.Option<B>;
-		<A>(
-			predicate: (a: A, i: number) => boolean
-		): (self: ReadonlyArray<A>) => Option.Option<A>;
-	},
-	{
-		<A, B extends A>(
-			self: Iterable<A>,
-			refinement: (a: A, i: number) => a is B
-		): Option.Option<B>;
-		<A>(
-			self: ReadonlyArray<A>,
-			predicate: (a: A, i: number) => boolean
-		): Option.Option<A>;
-	}
->(
-	2,
+export const findSingleton: {
+	<A, B extends A>(
+		refinement: (a: A, i: number) => a is B
+	): (self: Iterable<A>) => Option.Option<B>;
 	<A>(
-		self: Iterable<A>,
 		predicate: (a: A, i: number) => boolean
-	): Option.Option<A> =>
-		pipe(self, ReadonlyArray.filter(predicate), getSingleton)
-);
+	): (self: ReadonlyArray<A>) => Option.Option<A>;
+} =
+	<A>(predicate: (a: A, i: number) => boolean) =>
+	(self: Iterable<A>): Option.Option<A> =>
+		pipe(self, ReadonlyArray.filter(predicate), getSingleton);
 
 /**
  * Split an array A in two arrays [B,C], B containing all the elements at even indexes, C all elements at odd indexes
@@ -146,67 +100,35 @@ export const splitOddEvenIndexes = <A>(
  *
  * @since 1.0.0
  */
-export const findAll: {
-	<B extends A, A = B>(
-		predicate: Predicate.Predicate<A>
-	): (self: Iterable<B>) => ReadonlyArray<number>;
-	<B extends A, A = B>(
-		self: Iterable<B>,
-		predicate: Predicate.Predicate<A>
-	): ReadonlyArray<number>;
-} = Function.dual(
-	2,
-	<B extends A, A = B>(
-		self: Iterable<B>,
-		predicate: Predicate.Predicate<A>
-	): ReadonlyArray<number> =>
+export const findAll =
+	<B extends A, A = B>(predicate: Predicate.Predicate<A>) =>
+	(self: Iterable<B>): ReadonlyArray<number> =>
 		ReadonlyArray.reduce(self, ReadonlyArray.empty<number>(), (acc, a, i) =>
 			predicate(a) ? ReadonlyArray.append(acc, i) : acc
-		)
-);
+		);
 
 /**
  * Returns the provided `ReadonlyArray` `that` if `self` is empty, otherwise returns `self`.
  *
  * @category error handling
  */
-export const orElse: {
-	<B>(
-		that: Function.LazyArg<ReadonlyArray<B>>
-	): <A>(self: ReadonlyArray<A>) => ReadonlyArray<B | A>;
-	<A, B>(
-		self: ReadonlyArray<A>,
-		that: Function.LazyArg<ReadonlyArray<B>>
-	): ReadonlyArray<A | B>;
-} = Function.dual(
-	2,
-	<A, B>(
-		self: ReadonlyArray<A>,
-		that: Function.LazyArg<ReadonlyArray<B>>
-	): ReadonlyArray<A | B> =>
-		ReadonlyArray.isEmptyReadonlyArray(self) ? that() : self
-);
+export const orElse =
+	<B>(that: Function.LazyArg<ReadonlyArray<B>>) =>
+	<A>(self: ReadonlyArray<A>): ReadonlyArray<B | A> =>
+		ReadonlyArray.isEmptyReadonlyArray(self) ? that() : self;
 
 /**
  * Takes all elements of self except the n last elements
  */
-export const takeBut: {
-	(n: number): <A>(self: ReadonlyArray<A>) => Array<A>;
-	<A>(self: ReadonlyArray<A>, n: number): Array<A>;
-} = Function.dual(
-	2,
-	<A>(self: ReadonlyArray<A>, n: number): Array<A> =>
-		ReadonlyArray.take(self, ReadonlyArray.length(self) - n)
-);
+export const takeBut =
+	(n: number) =>
+	<A>(self: ReadonlyArray<A>): Array<A> =>
+		ReadonlyArray.take(self, ReadonlyArray.length(self) - n);
 
 /**
  * Takes all elements of self except the n first elements
  */
-export const takeRightBut: {
-	(n: number): <A>(self: ReadonlyArray<A>) => Array<A>;
-	<A>(self: ReadonlyArray<A>, n: number): Array<A>;
-} = Function.dual(
-	2,
-	<A>(self: ReadonlyArray<A>, n: number): Array<A> =>
-		ReadonlyArray.takeRight(self, ReadonlyArray.length(self) - n)
-);
+export const takeRightBut =
+	(n: number) =>
+	<A>(self: ReadonlyArray<A>): Array<A> =>
+		ReadonlyArray.takeRight(self, ReadonlyArray.length(self) - n);
