@@ -1,13 +1,5 @@
 import { EqValue } from '#mjljm/effect-lib/index';
-import {
-	Equivalence,
-	MutableHashMap,
-	MutableList,
-	Option,
-	Predicate,
-	identity,
-	pipe
-} from 'effect';
+import { Equivalence, MutableHashMap, MutableList, Option, Predicate, identity, pipe } from 'effect';
 
 /**
  * Function that takes an initial state and runs it through a step until the result stops meeting the while condition (while condition is executed at start of loop). The final state is returned. Exists in predicate and refinement version.
@@ -222,10 +214,7 @@ export const doWhileAccum: {
 /**
  * Function to memoize a function that takes an A and returns a B
  */
-export const memoize = <A, B>(
-	f: (a: A) => B,
-	Eq?: Equivalence.Equivalence<A> | undefined
-): ((a: A) => B) => {
+export const memoize = <A, B>(f: (a: A) => B, Eq?: Equivalence.Equivalence<A> | undefined): ((a: A) => B) => {
 	const cache = MutableHashMap.empty<EqValue.EqValue<A>, B>();
 	return (a: A) =>
 		pipe(new EqValue.EqValue({ value: a, Eq }), (eqA) =>
@@ -246,9 +235,7 @@ export const makeReadonly: <A>(s: A) => Readonly<A> = identity;
 /**
  * Type qui transforme une union en inetrsection
  */
-export type UnionToIntersection<U> = (
-	U extends unknown ? (k: U) => void : never
-) extends (k: infer I) => void
+export type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) extends (k: infer I) => void
 	? I
 	: never;
 
@@ -267,14 +254,7 @@ export { type AnyArray as Array };
 /**
  * Type qui représente une primitive
  */
-export type Primitive =
-	| string
-	| number
-	| bigint
-	| boolean
-	| symbol
-	| undefined
-	| null;
+export type Primitive = string | number | bigint | boolean | symbol | undefined | null;
 
 /**
  * Type qui représente une fonction
@@ -294,10 +274,7 @@ export type Unknown = Primitive | AnyFunction | ObjectRecord | AnyArray;
 export type RecordOrArray = ObjectRecord | AnyArray;
 
 export const isPrimitive = (u: unknown): u is Primitive =>
-	u === null ||
-	['string', 'number', 'boolean', 'bigingt', 'symbol', 'undefined'].includes(
-		typeof u
-	);
+	u === null || ['string', 'number', 'boolean', 'bigingt', 'symbol', 'undefined'].includes(typeof u);
 
 export type Errorish = { message: string; stack?: string | undefined };
 
@@ -308,17 +285,12 @@ export const isBoolean = Predicate.isBoolean;
 export const isSymbol = Predicate.isSymbol;
 export const isUndefined = Predicate.isUndefined;
 export const isNull = Predicate.isNull;
-export const isFunction = (u: unknown): u is AnyFunction =>
-	typeof u === 'function';
+export const isFunction = (u: unknown): u is AnyFunction => typeof u === 'function';
 // Warning : isObjectRecord lets class instances through although thet don't satisfy ObjectRecord
 // But class instances do behave like ObjectRecords. So should be safe
 export const isRecord = Predicate.isRecord;
 export const isArray = Array.isArray;
-export const isRecordOrArray = (u: unknown): u is RecordOrArray =>
-	u !== null && typeof u === 'object';
+export const isRecordOrArray = (u: unknown): u is RecordOrArray => u !== null && typeof u === 'object';
 export const isUrl = (u: unknown): u is URL => u instanceof URL;
 export const isErrorish = (u: unknown): u is Errorish =>
-	u !== null &&
-	typeof u === 'object' &&
-	'message' in u &&
-	typeof u.message === 'string';
+	u !== null && typeof u === 'object' && 'message' in u && typeof u.message === 'string';
