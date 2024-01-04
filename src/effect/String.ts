@@ -12,7 +12,7 @@ export interface SearchResult {
 	readonly match: string;
 }
 
-const SearchResult = MFunction.makeReadonly<SearchResult>;
+const SearchResult = MFunction.make<SearchResult>;
 
 /**
  * Same as search but returns a SearchResult. You can optionnally provide the index from which to start searching. Throws if g flag is not set in the regexp.
@@ -45,7 +45,7 @@ export const searchWithPos =
  */
 export const searchAllWithPos =
 	(regexp: RegExp | string) =>
-	(self: string): ReadonlyArray<SearchResult> => {
+	(self: string): Array<SearchResult> => {
 		if (typeof regexp === 'string') regexp = new RegExp(regexp, 'g');
 		if (!regexp.flags.includes('g'))
 			throw new MError.General({

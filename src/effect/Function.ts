@@ -1,5 +1,7 @@
 import { EqValue } from '#mjljm/effect-lib/index';
-import { Equivalence, MutableHashMap, MutableList, Option, Predicate, identity } from 'effect';
+import { Equal, Equivalence, MutableHashMap, MutableList, Option, Predicate, identity } from 'effect';
+
+//const moduleTag = '@mjljm/effect-lib/effect/Function/';
 
 /**
  * Function that takes an initial state and runs it through a step until the result stops meeting the while condition (while condition is executed at start of loop). The final state is returned. Exists in predicate and refinement version.
@@ -236,9 +238,30 @@ export const memoize = <A, B>(f: (a: A) => B, Eq?: Equivalence.Equivalence<A>): 
 };
 
 /**
- * Function that takes an object of type A and return an object of type Readonly<A>
+ * Constructor for objects that require no Id and no equal operator
  */
-export const makeReadonly: <A>(s: A) => Readonly<A> = identity;
+export const make: <A>(s: Readonly<A>) => Readonly<A> = identity;
+
+/**
+ * Constructor for objects of a simple type that require an Id and an equal operator
+ */
+export const makeWithId =
+	<A>(TypeId: symbol, prototype: Equal.Equal | null = null) =>
+	(params: Readonly<Omit<A, symbol>>): Readonly<A> =>
+		Object.assign(
+			Object.create(prototype, {
+				[TypeId]: { value: TypeId }
+			}),
+			params
+		) as A;
+
+/**
+ * Generic type guard for object with Id
+ */
+export const isOfId =
+	<Type>(TypeId: symbol) =>
+	(u: unknown): u is Type =>
+		Predicate.hasProperty(u, TypeId);
 
 /**
  * Type qui transforme une union en inetrsection

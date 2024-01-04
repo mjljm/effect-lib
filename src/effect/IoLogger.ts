@@ -1,14 +1,14 @@
-import { MFiberId } from '#mjljm/effect-lib/index';
+import { MFiberId, MFunction } from '#mjljm/effect-lib/index';
 import { ANSI } from '@mjljm/js-lib';
-import { Equal, Logger, Option, Predicate, identity, pipe } from 'effect';
+import { Equal, Logger, Option, identity, pipe } from 'effect';
 
 const moduleTag = '@mjljm/effect-lib/effect/IoLogger/';
 
-const TypeId: unique symbol = Symbol.for(moduleTag + 'MessageTypeId');
-type TypeId = typeof TypeId;
+const MessageTypeId: unique symbol = Symbol.for(moduleTag + 'MessageTypeId');
+type MessageTypeId = typeof MessageTypeId;
 
 interface Message {
-	readonly [TypeId]: TypeId;
+	readonly [MessageTypeId]: MessageTypeId;
 	readonly message: string;
 	readonly showDate: boolean;
 	readonly skipMessageFormatting: boolean;
@@ -21,12 +21,12 @@ interface Message {
 /**
  * Type guards
  */
-export const isMessage = (u: unknown): u is Message => Predicate.hasProperty(u, TypeId);
+export const isMessage = MFunction.isOfId<Message>(MessageTypeId);
 
 /**
  * Constructors
  */
-export const Message = (m: Readonly<Omit<Message, TypeId>>): Message => ({ ...m, [TypeId]: TypeId });
+export const Message = MFunction.makeWithId<Message>(MessageTypeId);
 
 export const $ = (title: string): Message =>
 	Message({

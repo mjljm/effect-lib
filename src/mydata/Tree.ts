@@ -1,6 +1,6 @@
 import { MFunction } from '#mjljm/effect-lib/index';
 import { Monoid } from '@effect/typeclass';
-import { Equal, Equivalence, MutableHashSet, ReadonlyArray, pipe } from 'effect';
+import { Equal, Equivalence, Function, MutableHashSet, ReadonlyArray, pipe } from 'effect';
 
 //const moduleTag = '@mjljm/effect-lib/mydata/Tree/';
 
@@ -20,7 +20,7 @@ export interface Tree<out A> {
 /**
  * @category constructor
  */
-const Tree = <A>(fa: Tree<A>) => MFunction.makeReadonly<Tree<A>>(fa);
+const Tree = <A>(fa: Tree<A>) => MFunction.make<Tree<A>>(fa);
 
 /**
  * Build a (possibly infinite) tree from a seed value.
@@ -73,6 +73,7 @@ export const unfold = <A, B>({
 			)
 		}));
 
+	// The cache is destroyed with this object. So its is necessarily cleaned on function exit even if it throws
 	const cachedInternalUnfold = memoize
 		? MFunction.memoize(
 				internalUnfold,
