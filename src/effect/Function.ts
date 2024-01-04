@@ -1,5 +1,5 @@
 import { EqValue } from '#mjljm/effect-lib/index';
-import { Equivalence, MutableHashMap, MutableList, Option, Predicate, identity, pipe } from 'effect';
+import { Equivalence, MutableHashMap, MutableList, Option, Predicate, identity } from 'effect';
 
 /**
  * Function that takes an initial state and runs it through a step until the result stops meeting the while condition (while condition is executed at start of loop). The final state is returned. Exists in predicate and refinement version.
@@ -214,17 +214,25 @@ export const doWhileAccum: {
 /**
  * Function to memoize a function that takes an A and returns a B
  */
-export const memoize = <A, B>(f: (a: A) => B, Eq?: Equivalence.Equivalence<A> | undefined): ((a: A) => B) => {
-	const cache = MutableHashMap.empty<EqValue.EqValue<A>, B>();
-	return (a: A) =>
-		pipe(new EqValue.EqValue({ value: a, Eq }), (eqA) =>
-			pipe(
-				cache,
-				MutableHashMap.get(eqA),
-				Option.getOrElse(() => f(a)),
-				(b) => (MutableHashMap.set(cache, eqA, b), b)
-			)
-		);
+export const memoize = <A, B>(f: (a: A) => B, Eq?: Equivalence.Equivalence<A>): ((a: A) => B) => {
+	type CachedF = {
+		(a: A): B;
+		cache: MutableHashMap.MutableHashMap<EqValue.Type<A>, B>;
+	};
+
+	const cachedF: CachedF = ((a: A) => {
+		const eqValueA = EqValue.make({ value: a, Eq });
+		const cachedA = MutableHashMap.get(cachedF.cache, eqValueA);
+		if (Option.isSome(cachedA)) return cachedA.value;
+		else {
+			const result = f(a);
+			MutableHashMap.set(cachedF.cache, eqValueA, result);
+			return result;
+		}
+	}) as CachedF;
+
+	cachedF.cache = MutableHashMap.empty();
+	return cachedF;
 };
 
 /**

@@ -8,7 +8,8 @@ import { DateTime } from 'luxon';
 // Parsing
 export const parse =
 	<_, A>(schema: Schema.Schema<_, A>) =>
-	(i: unknown, options?: AST.ParseOptions) =>
+	(options?: AST.ParseOptions) =>
+	(i: unknown) =>
 		pipe(
 			Schema.parse(schema)(i, options),
 			Effect.catchAll(
@@ -21,7 +22,8 @@ export const parse =
 
 export const parseEither =
 	<_, A>(schema: Schema.Schema<_, A>) =>
-	(i: unknown, options?: AST.ParseOptions) =>
+	(options?: AST.ParseOptions) =>
+	(i: unknown) =>
 		pipe(
 			Schema.parseEither(schema)(i, options),
 			Either.mapLeft(

@@ -1,17 +1,46 @@
-import { Data, Equal, Equivalence, Hash } from 'effect';
+import { Equal, Equivalence, Hash } from 'effect';
+
+const moduleTag = '@mjljm/effect-lib/mydata/EqValue/';
+
+const TypeId: unique symbol = Symbol.for(moduleTag + 'TypeId');
+type TypeId = typeof TypeId;
 
 /**
- * Used to encapsulate a value whose equal property we want to change. TO BE USED ONLY WITH MAPS BECAUSE OF TYPE ASSERTION IN EQUAL FUNCTION
+ * MODEL
+ * Container used to overload the equal property of an object. TO BE USED ONLY WITH COLLECTIONS BECAUSE AN EQUIVALENCE COMPARES ONLY ELEMENTS OF SAME TYPE
  */
-export class EqValue<in out A> extends Data.Class<{
+export interface Type<in out A> extends Equal.Equal {
+	readonly [TypeId]: TypeId;
 	readonly value: A;
 	readonly Eq?: Equivalence.Equivalence<A> | undefined;
-}> {
-	[Equal.symbol] = (that: Equal.Equal): boolean =>
-		that instanceof EqValue
-			? this.Eq
-				? this.Eq(this.value, that.value as A)
-				: Equal.equals(this.value, that.value)
-			: false;
-	[Hash.symbol] = (): number => Hash.hash(this.value);
 }
+
+/**
+ * Type guard
+ */
+//const isEqValue = (u: unknown): u is EqValue<unknown> => Predicate.hasProperty(u, TypeId);
+
+/**
+ * Constructors
+ */
+
+const prototype = {
+	[Equal.symbol](this: Type<unknown>, that: Equal.Equal): boolean {
+		return this.Eq
+			? this.Eq(this.value, (that as Type<unknown>).value)
+			: Equal.equals(this.value, (that as Type<unknown>).value);
+	},
+	[Hash.symbol](this: Type<unknown>): number {
+		return Hash.hash(this.value);
+	}
+};
+
+export const make = <A>({
+	Eq,
+	value
+}: Readonly<Omit<Type<A>, TypeId | typeof Equal.symbol | typeof Hash.symbol>>): Type<A> =>
+	Object.create(prototype, {
+		[TypeId]: { value: TypeId },
+		value: { value },
+		Eq: { value: Eq }
+	}) as Type<A>;

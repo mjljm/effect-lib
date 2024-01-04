@@ -1,23 +1,13 @@
-import { EqValue, MFunction } from '#mjljm/effect-lib/index';
+import { MFunction } from '#mjljm/effect-lib/index';
 import { Monoid } from '@effect/typeclass';
-import {
-	Chunk,
-	Data,
-	Either,
-	Equal,
-	Equivalence,
-	Function,
-	Hash,
-	HashSet,
-	pipe
-} from 'effect';
+import { Equal, Equivalence, MutableHashSet, ReadonlyArray, pipe } from 'effect';
 
 //const moduleTag = '@mjljm/effect-lib/mydata/Tree/';
 
 /**
  * @category model
  */
-export type Forest<A> = Chunk.Chunk<Tree<A>>;
+export type Forest<A> = ReadonlyArray<Tree<A>>;
 
 /**
  * @category model
@@ -37,13 +27,10 @@ const Tree = <A>(fa: Tree<A>) => MFunction.makeReadonly<Tree<A>>(fa);
  *
  * @category constructors
  */
-export const UnfoldTree = <A, B>(
-	seed: B,
-	f: (seed: B) => [nextValue: A, nextSeeds: Chunk.Chunk<B>]
-): Tree<A> =>
+export const unfoldTree = <A, B>(seed: B, f: (seed: B) => [nextValue: A, nextSeeds: ReadonlyArray<B>]): Tree<A> =>
 	pipe(f(seed), ([nextValue, nextSeeds]) => ({
 		value: nextValue,
-		forest: UnfoldForest(nextSeeds, f)
+		forest: unfoldForest(nextSeeds, f)
 	}));
 
 /**
@@ -51,85 +38,49 @@ export const UnfoldTree = <A, B>(
  *
  * @category constructors
  */
-export function UnfoldForest<A, B>(
-	seeds: Chunk.Chunk<B>,
-	f: (seed: B) => [nextValue: A, nextSeeds: Chunk.Chunk<B>]
+export function unfoldForest<A, B>(
+	seeds: ReadonlyArray<B>,
+	f: (seed: B) => [nextValue: A, nextSeeds: ReadonlyArray<B>]
 ): Forest<A> {
-	return Chunk.map(seeds, (seed) => UnfoldTree(seed, f));
+	return ReadonlyArray.map(seeds, (seed) => unfoldTree(seed, f));
 }
 
 /**
- * Build a (possibly infinite) tree from a seed value. The function detects circularity and reports it in the f function parameter. Results are cached in case the same node is met more than once
+ * Build a (possibly infinite) tree from a seed value. Can use a cache and handles circularity
  *
  * @category constructors
  */
-export const unfoldEither = <E, A, B>(
-	seed: B,
-	f: (
-		nextSeed: B,
-		isCircular: boolean
-	) => Either.Either<E, [nextValue: A, nextSeeds: Chunk.Chunk<B>]>,
-	memoize = false,
-	Eq?: Equivalence.Equivalence<B> | undefined
-): Either.Either<E, Tree<A>> => {
-	class UnfoldTreeParams extends Data.Class<{
-		readonly seed: B;
-		readonly parents: HashSet.HashSet<EqValue.EqValue<B>>;
-		readonly memoize?: boolean | undefined;
-	}> {
-		[Equal.symbol] = (that: Equal.Equal): boolean =>
-			that instanceof UnfoldTreeParams
-				? Equal.equals(this.seed, that.seed)
-				: false;
-		[Hash.symbol] = (): number => Hash.hash(this.seed);
-	}
-	const UnfoldTreeParamsEq = Eq
-		? Equivalence.make((self: UnfoldTreeParams, that: UnfoldTreeParams) =>
-				Eq(self.seed, that.seed)
-		  )
-		: undefined;
-	const internalUnfoldTree = ({
-		memoize = false,
-		parents,
-		seed
-	}: UnfoldTreeParams): Either.Either<E, Tree<A>> =>
-		pipe(
-			f(seed, HashSet.has(parents, new EqValue.EqValue({ value: seed, Eq }))),
-			Either.flatMap(([nextValue, nextSeeds]) =>
-				Either.all({
-					value: Either.right(nextValue),
-					forest: pipe(
-						Chunk.map(nextSeeds, (nextSeed) =>
-							pipe(
-								new UnfoldTreeParams({
-									seed: nextSeed,
-									parents: HashSet.add(
-										parents,
-										new EqValue.EqValue({ value: seed, Eq })
-									),
-									memoize
-								}),
-								(params) =>
-									memoize
-										? cachedUnfoldTree(params)
-										: internalUnfoldTree(params)
-							)
-						),
-						Either.all,
-						Either.map(Chunk.unsafeFromArray)
-					)
-				})
+export const unfold = <A, B>({
+	memoize,
+	seed,
+	unfoldfunction
+}: {
+	readonly unfoldfunction: (seed: B, isCircular: boolean) => [nextValue: A, nextSeeds: ReadonlyArray<B>];
+	readonly memoize: boolean;
+	readonly seed: B;
+}): Tree<A> => {
+	const internalUnfold = ({
+		currentSeed,
+		parents
+	}: {
+		readonly currentSeed: B;
+		readonly parents: MutableHashSet.MutableHashSet<B>;
+	}): Tree<A> =>
+		pipe(unfoldfunction(currentSeed, MutableHashSet.has(parents, currentSeed)), ([nextValue, nextSeeds]) => ({
+			value: nextValue,
+			forest: ReadonlyArray.map(nextSeeds, (seed) =>
+				cachedInternalUnfold({ currentSeed: seed, parents: MutableHashSet.add(parents, currentSeed) })
 			)
-		);
+		}));
 
-	const cachedUnfoldTree = MFunction.memoize(
-		internalUnfoldTree,
-		UnfoldTreeParamsEq
-	);
+	const cachedInternalUnfold = memoize
+		? MFunction.memoize(
+				internalUnfold,
+				Equivalence.make((self, that) => Equal.equals(self.currentSeed, that.currentSeed))
+		  )
+		: internalUnfold;
 
-	return internalUnfoldTree(
-		new UnfoldTreeParams({ seed, parents: HashSet.empty(), memoize })
-	);
+	return cachedInternalUnfold({ currentSeed: seed, parents: MutableHashSet.empty<B>() });
 };
 
 /**
@@ -160,12 +111,12 @@ export const unfoldEither = <E, A, B>(
  * @category folding
  */
 export const fold =
-	<A, B>(f: (a: A, bs: Chunk.Chunk<B>, level: number) => B) =>
+	<A, B>(f: (a: A, bs: ReadonlyArray<B>, level: number) => B) =>
 	(self: Tree<A>): B => {
 		const go =
 			(level: number) =>
 			(fa: Tree<A>): B =>
-				f(fa.value, Chunk.map(fa.forest, go(level + 1)), level);
+				f(fa.value, ReadonlyArray.map(fa.forest, go(level + 1)), level);
 		return go(0)(self);
 	};
 
@@ -182,7 +133,7 @@ export const flatMap =
 
 				return {
 					value,
-					forest: Chunk.appendAll(forest, Chunk.map(self.forest, go(level + 1)))
+					forest: ReadonlyArray.appendAll(forest, ReadonlyArray.map(self.forest, go(level + 1)))
 				};
 			};
 		return go(0)(self);
@@ -198,7 +149,7 @@ export const extendDown =
 			(level: number) =>
 			(self: Tree<A>): Tree<B> => ({
 				value: f(self, level),
-				forest: Chunk.map(self.forest, go(level + 1))
+				forest: ReadonlyArray.map(self.forest, go(level + 1))
 			});
 		return go(0)(self);
 	};
@@ -212,7 +163,7 @@ export const extendUp =
 		const go =
 			(level: number) =>
 			(self: Tree<A>): Tree<B> => ({
-				forest: Chunk.map(self.forest, go(level + 1)),
+				forest: ReadonlyArray.map(self.forest, go(level + 1)),
 				value: f(self, level)
 			});
 		return go(0)(self);
@@ -220,16 +171,12 @@ export const extendUp =
 
 /**
  */
-export const duplicate: <A>(self: Tree<A>) => Tree<Tree<A>> = extendDown(
-	Function.identity
-);
+export const duplicate: <A>(self: Tree<A>) => Tree<Tree<A>> = extendDown(Function.identity);
 
 /**
  * @category sequencing
  */
-export const flatten: <A>(self: Tree<Tree<A>>) => Tree<A> = flatMap(
-	Function.identity
-);
+export const flatten: <A>(self: Tree<Tree<A>>) => Tree<A> = flatMap(Function.identity);
 
 /**
  *
@@ -242,7 +189,7 @@ export const map =
 			(level: number) =>
 			(self: Tree<A>): Tree<B> => ({
 				value: f(self.value, level),
-				forest: Chunk.map(self.forest, go(level + 1))
+				forest: ReadonlyArray.map(self.forest, go(level + 1))
 			});
 		return go(0)(self);
 	};
@@ -260,7 +207,7 @@ export const reduce =
 				let r: B = f(b, self.value, level);
 				const len = self.forest.length;
 				for (let i = 0; i < len; i++) {
-					r = pipe(self.forest, Chunk.unsafeGet(i), go(r, level + 1));
+					r = pipe(self.forest, ReadonlyArray.unsafeGet(i), go(r, level + 1));
 				}
 				return r;
 			};
@@ -292,7 +239,7 @@ export const reduceRight =
 				let r: B = f(b, self.value, level);
 				const len = self.forest.length;
 				for (let i = len - 1; i >= 0; i--) {
-					r = pipe(self.forest, Chunk.unsafeGet(i), go(r, level + 1));
+					r = pipe(self.forest, ReadonlyArray.unsafeGet(i), go(r, level + 1));
 				}
 				return r;
 			};

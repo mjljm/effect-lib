@@ -1,10 +1,14 @@
 import { MFiberId } from '#mjljm/effect-lib/index';
 import { ANSI } from '@mjljm/js-lib';
-import { Data, Equal, Logger, Option, identity, pipe } from 'effect';
+import { Equal, Logger, Option, Predicate, identity, pipe } from 'effect';
 
-//const moduleTag = '@mjljm/effect-lib/effect/IoLogger/';
+const moduleTag = '@mjljm/effect-lib/effect/IoLogger/';
 
-class Message extends Data.Class<{
+const TypeId: unique symbol = Symbol.for(moduleTag + 'MessageTypeId');
+type TypeId = typeof TypeId;
+
+interface Message {
+	readonly [TypeId]: TypeId;
 	readonly message: string;
 	readonly showDate: boolean;
 	readonly skipMessageFormatting: boolean;
@@ -12,10 +16,20 @@ class Message extends Data.Class<{
 	readonly skipLineBefore: boolean;
 	readonly skipLineAfter: boolean;
 	readonly messageKey: Option.Option<string>;
-}> {}
+}
+
+/**
+ * Type guards
+ */
+export const isMessage = (u: unknown): u is Message => Predicate.hasProperty(u, TypeId);
+
+/**
+ * Constructors
+ */
+export const Message = (m: Readonly<Omit<Message, TypeId>>): Message => ({ ...m, [TypeId]: TypeId });
 
 export const $ = (title: string): Message =>
-	new Message({
+	Message({
 		message: ANSI.yellow(title),
 		showDate: true,
 		skipMessageFormatting: true,
@@ -25,7 +39,7 @@ export const $ = (title: string): Message =>
 		messageKey: Option.none()
 	});
 export const _ = (text: string): Message =>
-	new Message({
+	Message({
 		message: text,
 		showDate: false,
 		skipMessageFormatting: false,
@@ -35,7 +49,7 @@ export const _ = (text: string): Message =>
 		messageKey: Option.none()
 	});
 export const _eol = (text: string): Message =>
-	new Message({
+	Message({
 		message: text,
 		showDate: false,
 		skipMessageFormatting: false,
@@ -45,7 +59,7 @@ export const _eol = (text: string): Message =>
 		messageKey: Option.none()
 	});
 export const eol_ = (text: string): Message =>
-	new Message({
+	Message({
 		message: text,
 		showDate: false,
 		skipMessageFormatting: false,
@@ -55,7 +69,7 @@ export const eol_ = (text: string): Message =>
 		messageKey: Option.none()
 	});
 export const messageWithObject = (text: string, object: unknown): Message =>
-	new Message({
+	Message({
 		message: text,
 		showDate: false,
 		skipMessageFormatting: false,
@@ -65,7 +79,7 @@ export const messageWithObject = (text: string, object: unknown): Message =>
 		messageKey: Option.none()
 	});
 export const messageWithKey = (text: string, key: string): Message =>
-	new Message({
+	Message({
 		message: text,
 		showDate: false,
 		skipMessageFormatting: false,
@@ -75,7 +89,7 @@ export const messageWithKey = (text: string, key: string): Message =>
 		messageKey: Option.some(key)
 	});
 export const skipLine = (): Message =>
-	new Message({
+	Message({
 		message: '',
 		showDate: false,
 		skipMessageFormatting: true,
@@ -93,12 +107,9 @@ export const live = (stringify: (u: unknown) => string) =>
 			Logger.defaultLogger,
 			Logger.make(({ date, fiberId, logLevel, message }) => {
 				try {
-					const isObjectMessage = message instanceof Message;
-					const currentKey = isObjectMessage
-						? message.messageKey
-						: Option.none<string>();
-					const skipMessage =
-						Option.isSome(currentKey) && Equal.equals(currentKey, previousKey);
+					const isObjectMessage = isMessage(message);
+					const currentKey = isObjectMessage ? message.messageKey : Option.none<string>();
+					const skipMessage = Option.isSome(currentKey) && Equal.equals(currentKey, previousKey);
 					previousKey = skipMessage ? Option.none() : currentKey;
 
 					if (!skipMessage)
@@ -110,18 +121,12 @@ export const live = (stringify: (u: unknown) => string) =>
 											? ANSI.red
 											: logLevel._tag === 'Warning'
 											  ? ANSI.yellow
-											  : ANSI.green)(
-											MFiberId.toJson(fiberId) +
-												` ${date.getTime() - startTime}ms `
-									  )) +
+											  : ANSI.green)(MFiberId.toJson(fiberId) + ` ${date.getTime() - startTime}ms `)) +
 								(isObjectMessage
 									? (message.message === ''
 											? '' // Don't show fiberId when skipping line
 											: (message.skipMessageFormatting ? identity : ANSI.gray)(
-													message.message +
-														(!message.showDate
-															? '(' + MFiberId.toJson(fiberId) + ')'
-															: '')
+													message.message + (!message.showDate ? '(' + MFiberId.toJson(fiberId) + ')' : '')
 											  )) +
 									  Option.match(message.object, {
 											onNone: () => '',

@@ -1,23 +1,15 @@
-import {
-	EqValue,
-	MCause,
-	MEffect,
-	MError,
-	Tree
-} from '#mjljm/effect-lib/index';
+import { MCause, MEffect, MError, Tree } from '#mjljm/effect-lib/index';
 import { ANSI, StringUtils } from '@mjljm/js-lib';
 import {
-	Chunk,
-	Data,
 	Effect,
 	Either,
 	Equal,
 	Equivalence,
-	Hash,
-	HashSet,
 	List,
+	MutableHashSet,
 	Option,
 	Predicate,
+	ReadonlyArray,
 	pipe
 } from 'effect';
 import { Concurrency } from 'effect/Types';
@@ -31,16 +23,12 @@ export interface PredicateEffect<in Z, out R, out E> {
  */
 export const clearAndLogAllCauses =
 	(srcDirPath: string, stringify: (u: unknown) => string, tabChar?: string) =>
-	<R, E extends MError.WithOriginalCause, A>(
-		self: Effect.Effect<R, E, A>
-	): Effect.Effect<R, never, A | void> =>
+	<R, E extends MError.WithOriginalCause, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, never, A | void> =>
 		Effect.catchAllCause(self, (c) =>
 			pipe(c, MCause.toJson(srcDirPath, stringify, tabChar), (errorText) =>
 				errorText === ''
 					? Effect.logInfo(ANSI.green('SCRIPT EXITED SUCCESSFULLY'))
-					: Effect.logError(
-							ANSI.red('SCRIPT FAILED\n') + StringUtils.tabify(errorText)
-					  )
+					: Effect.logError(ANSI.red('SCRIPT FAILED\n') + StringUtils.tabify(errorText))
 			)
 		);
 
@@ -75,9 +63,7 @@ export const doWhile = <Z, R1, E1, R2, E2>(
 	Effect.suspend(() =>
 		Effect.gen(function* (_) {
 			const loop = yield* _(options.step(initial));
-			return (yield* _(options.predicate(loop)))
-				? yield* _(doWhile(loop, options))
-				: loop;
+			return (yield* _(options.predicate(loop))) ? yield* _(doWhile(loop, options)) : loop;
 		})
 	);
 
@@ -113,15 +99,10 @@ export const whileDoAccum: {
 		readonly body: (z: Z) => Effect.Effect<R3, E3, A>;
 		readonly discard?: boolean;
 	}
-):
-	| Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, Array<A>>
-	| Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, void> =>
+): Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, Array<A>> | Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, void> =>
 	options.discard
 		? loopDiscard(initial, options.while, options.step, options.body)
-		: Effect.map(
-				loopInternal(initial, options.while, options.step, options.body),
-				(x) => Array.from(x)
-		  );
+		: Effect.map(loopInternal(initial, options.while, options.step, options.body), (x) => Array.from(x));
 
 const loopInternal = <Z, R1, E1, R2, E2, R3, E3, A>(
 	initial: Z,
@@ -132,10 +113,7 @@ const loopInternal = <Z, R1, E1, R2, E2, R3, E3, A>(
 	Effect.suspend(() =>
 		Effect.gen(function* (_) {
 			return (yield* _(cont(initial)))
-				? List.prepend(
-						yield* _(loopInternal(yield* _(inc(initial)), cont, inc, body)),
-						yield* _(body(initial))
-				  )
+				? List.prepend(yield* _(loopInternal(yield* _(inc(initial)), cont, inc, body)), yield* _(body(initial)))
 				: List.empty<A>();
 		})
 	);
@@ -160,11 +138,7 @@ const loopDiscard = <Z, R1, E1, R2, E2, R3, E3, A>(
  */
 export const cachedFunctionWithLogging = <R, E, A, B>(
 	f: (a: A) => Effect.Effect<R, E, B>,
-	onRecalcOrExit: (
-		a: A,
-		b: B,
-		event: 'onRecalc' | 'onExit'
-	) => Effect.Effect<never, never, void>,
+	onRecalcOrExit: (a: A, b: B, event: 'onRecalc' | 'onExit') => Effect.Effect<never, never, void>,
 	eq?: Equivalence.Equivalence<A>
 ): Effect.Effect<never, never, (a: A) => Effect.Effect<R, E, B>> =>
 	Effect.gen(function* (_) {
@@ -175,9 +149,7 @@ export const cachedFunctionWithLogging = <R, E, A, B>(
 				yield* _(onRecalcOrExit(a, b, 'onRecalc'));
 				return b;
 			});
-		const cachedFunction = yield* _(
-			Effect.cachedFunction(functionWithLogging, eq)
-		);
+		const cachedFunction = yield* _(Effect.cachedFunction(functionWithLogging, eq));
 		return (a: A) =>
 			Effect.gen(function* (_) {
 				const b = yield* _(cachedFunction(a));
@@ -190,9 +162,7 @@ export const cachedFunctionWithLogging = <R, E, A, B>(
 /**
  * Constructs an Effect from an Either
  */
-export const fromEither = <E, A>(
-	value: Either.Either<E, A>
-): Effect.Effect<never, E, A> =>
+export const fromEither = <E, A>(value: Either.Either<E, A>): Effect.Effect<never, E, A> =>
 	// Other implementation, shorter but slower: Effect.flatMap(Effect.unit, () => value);
 	Either.match(value, {
 		onLeft: (e) => Effect.fail(e),
@@ -206,98 +176,71 @@ export const fromEither = <E, A>(
 export const filterOption: {
 	<A, B extends A>(
 		refinement: Predicate.Refinement<A, B>
-	): <R, E>(
-		self: Effect.Effect<R, E, A>
-	) => Effect.Effect<R, E, Option.Option<B>>;
-	<A>(
-		predicate: Predicate.Predicate<A>
-	): <R, E>(
-		self: Effect.Effect<R, E, A>
-	) => Effect.Effect<R, E, Option.Option<A>>;
+	): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<B>>;
+	<A>(predicate: Predicate.Predicate<A>): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>;
 } =
 	<A>(predicate: Predicate.Predicate<A>) =>
 	<R, E>(self: Effect.Effect<R, E, A>) =>
 		Effect.map(self, (a) => (predicate(a) ? Option.some(a) : Option.none()));
 
 /**
- * Effectful Tree.unfoldTree
+ * Effectful unfoldTree
  *
  * @category constructors
  */
-export const treeUnfold = <R, E, A, B>(
-	seed: B,
-	f: (
-		nextSeed: B,
+
+/**
+ * Build a (possibly infinite) tree from a seed value. Can use a cache and handles circularity
+ *
+ * @category constructors
+ */
+export const unfoldTree = <R, E, A, B>({
+	concurrencyOptions,
+	memoize,
+	seed,
+	unfoldfunction
+}: {
+	readonly concurrencyOptions?: { readonly concurrency?: Concurrency | undefined } | undefined;
+	readonly unfoldfunction: (
+		seed: B,
 		isCircular: boolean
-	) => Effect.Effect<R, E, [nextValue: A, nextSeeds: Chunk.Chunk<B>]>,
-	memoize = false,
-	Eq?: Equivalence.Equivalence<B> | undefined,
-	concurrencyOptions?:
-		| { readonly concurrency?: Concurrency | undefined }
-		| undefined
-): Effect.Effect<R, E, Tree.Tree<A>> =>
+	) => Effect.Effect<R, E, [nextValue: A, nextSeeds: ReadonlyArray<B>]>;
+	readonly memoize: boolean;
+	readonly seed: B;
+}): Effect.Effect<R, E, Tree.Tree<A>> =>
 	Effect.gen(function* (_) {
-		class UnfoldTreeParams extends Data.Class<{
-			readonly seed: B;
-			readonly parents: HashSet.HashSet<EqValue.EqValue<B>>;
-			readonly memoize?: boolean | undefined;
-		}> {
-			[Equal.symbol] = (that: Equal.Equal): boolean =>
-				that instanceof UnfoldTreeParams
-					? Equal.equals(this.seed, that.seed)
-					: false;
-			[Hash.symbol] = (): number => Hash.hash(this.seed);
-		}
-		const UnfoldTreeParamsEq = Eq
-			? Equivalence.make((self: UnfoldTreeParams, that: UnfoldTreeParams) =>
-					Eq(self.seed, that['seed'])
-			  )
-			: undefined;
-
 		const internalUnfoldTree = ({
-			memoize = false,
-			parents,
-			seed
-		}: UnfoldTreeParams): Effect.Effect<R, E, Tree.Tree<A>> =>
-			pipe(
-				f(seed, HashSet.has(parents, new EqValue.EqValue({ value: seed, Eq }))),
-				Effect.flatMap(([nextValue, nextSeeds]) =>
-					// Concurency between two fibers of which one is synchronous is useless
-					Effect.all({
-						value: Effect.succeed(nextValue),
-						forest: pipe(
-							Chunk.map(nextSeeds, (nextSeed) =>
-								pipe(
-									new UnfoldTreeParams({
-										seed: nextSeed,
-										parents: HashSet.add(
-											parents,
-											new EqValue.EqValue({ value: seed, Eq })
-										),
-										memoize
-									}),
-									(params) =>
-										memoize
-											? cachedUnfoldTree(params)
-											: internalUnfoldTree(params)
-								)
-							),
-							Effect.allWith(concurrencyOptions),
-							Effect.map(Chunk.unsafeFromArray)
-						)
-					})
-				),
-				// makes recursion stack safe
-				(e) => Effect.suspend(() => e)
-			);
+			currentSeed,
+			parents
+		}: {
+			readonly currentSeed: B;
+			readonly parents: MutableHashSet.MutableHashSet<B>;
+		}): Effect.Effect<R, E, Tree.Tree<A>> =>
+			Effect.gen(function* (_) {
+				const [nextValue, nextSeeds] = yield* _(unfoldfunction(currentSeed, MutableHashSet.has(parents, currentSeed)));
+				const forest = yield* _(
+					pipe(
+						nextSeeds,
+						ReadonlyArray.map((seed) =>
+							cachedInternalUnfoldTree({ currentSeed: seed, parents: MutableHashSet.add(parents, currentSeed) })
+						),
+						Effect.allWith(concurrencyOptions)
+					)
+				);
+				return {
+					value: nextValue,
+					forest
+				};
+			});
 
-		const cachedUnfoldTree = yield* _(
-			Effect.cachedFunction(internalUnfoldTree, UnfoldTreeParamsEq)
-		);
+		const cachedInternalUnfoldTree = memoize
+			? yield* _(
+					Effect.cachedFunction(
+						internalUnfoldTree,
+						Equivalence.make((self, that) => Equal.equals(self.currentSeed, that.currentSeed))
+					)
+			  )
+			: internalUnfoldTree;
 
-		return yield* _(
-			internalUnfoldTree(
-				new UnfoldTreeParams({ seed, parents: HashSet.empty(), memoize })
-			)
-		);
+		return yield* _(cachedInternalUnfoldTree({ currentSeed: seed, parents: MutableHashSet.empty<B>() }));
 	});

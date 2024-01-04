@@ -1,28 +1,18 @@
 import { MError, MFunction, MOption } from '#mjljm/effect-lib/index';
-import {
-	Chunk,
-	Data,
-	Either,
-	Function,
-	HashMap,
-	MutableHashSet,
-	Option,
-	ReadonlyArray,
-	String,
-	identity,
-	pipe
-} from 'effect';
+import { Either, Function, HashMap, MutableHashSet, Option, ReadonlyArray, String, identity, pipe } from 'effect';
 
 const moduleTag = '@mjljm/effect-lib/effect/String/';
 
-class SearchResult extends Data.Class<{
+export interface SearchResult {
 	/** Index of the first letter of the match */
 	readonly startIndex: number;
 	/** Index of the first letter following the match */
 	readonly endIndex: number;
 	/** Text of the matched element */
 	readonly match: string;
-}> {}
+}
+
+const SearchResult = MFunction.makeReadonly<SearchResult>;
 
 /**
  * Same as search but returns a SearchResult. You can optionnally provide the index from which to start searching. Throws if g flag is not set in the regexp.
@@ -42,7 +32,7 @@ export const searchWithPos =
 		const match = matchArray[0];
 		const index = matchArray.index;
 		return Option.some(
-			new SearchResult({
+			SearchResult({
 				startIndex: index,
 				endIndex: index + match.length,
 				match
@@ -55,18 +45,18 @@ export const searchWithPos =
  */
 export const searchAllWithPos =
 	(regexp: RegExp | string) =>
-	(self: string): Chunk.Chunk<SearchResult> => {
+	(self: string): ReadonlyArray<SearchResult> => {
 		if (typeof regexp === 'string') regexp = new RegExp(regexp, 'g');
 		if (!regexp.flags.includes('g'))
 			throw new MError.General({
 				message: `Function 'searchAllWithPos' of module '${moduleTag}' must be called with g flag set.`
 			});
 		return pipe(
-			Chunk.fromIterable(self.matchAll(regexp)),
-			Chunk.map((matchArr) => {
+			ReadonlyArray.fromIterable(self.matchAll(regexp)),
+			ReadonlyArray.map((matchArr) => {
 				const index = matchArr.index ?? 0;
 				const match = matchArr[0];
-				return new SearchResult({
+				return SearchResult({
 					startIndex: index,
 					endIndex: index + match.length,
 					match
@@ -81,7 +71,7 @@ export const searchAllWithPos =
 export const searchRightWithPos =
 	(regexp: RegExp) =>
 	(self: string): Option.Option<SearchResult> =>
-		pipe(self, searchAllWithPos(regexp), Chunk.last);
+		pipe(self, searchAllWithPos(regexp), ReadonlyArray.last);
 
 /**
  * Looks from the left for the first substring of self that matches regexp and returns all characters before that substring. If no occurence is found, returns self
@@ -149,11 +139,7 @@ export const templater =
 					message: `Function String.templateAllUsedNoExtra: ${notFound} not found in replacementMap`
 				})
 			);
-		if (
-			options &&
-			options.checkAllUsed &&
-			HashMap.size(replacementMap) !== MutableHashSet.size(foundSet)
-		)
+		if (options && options.checkAllUsed && HashMap.size(replacementMap) !== MutableHashSet.size(foundSet))
 			return Either.left(
 				new MError.General({
 					message:
@@ -171,18 +157,14 @@ export const templater =
  * @param obj
  * @returns
  */
-export const tryToStringToJson = (
-	obj: MFunction.Record
-): Option.Option<string> =>
+export const tryToStringToJson = (obj: MFunction.Record): Option.Option<string> =>
 	pipe(
 		obj['toString'],
 		(toString) =>
 			toString !== Object.prototype.toString
 				? MOption.liftUnknown(MFunction.isString)(toString).apply(obj)
 				: Option.none(),
-		Option.orElse(() =>
-			MOption.liftUnknown(MFunction.isString)(obj['toJson']).apply(obj)
-		)
+		Option.orElse(() => MOption.liftUnknown(MFunction.isString)(obj['toJson']).apply(obj))
 	);
 
 /**
@@ -217,9 +199,7 @@ export const takeRightBut =
 export const stripLeft =
 	(s: string) =>
 	(self: string): string =>
-		pipe(self, String.startsWith(s))
-			? pipe(self, takeRightBut(s.length))
-			: self;
+		pipe(self, String.startsWith(s)) ? pipe(self, takeRightBut(s.length)) : self;
 
 /**
  * If self ends with s, returns self stripped of s. Otherwise, returns s
