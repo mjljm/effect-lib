@@ -1,17 +1,6 @@
 import { MCause, MEffect, MError, Tree } from '#mjljm/effect-lib/index';
 import { ANSI, StringUtils } from '@mjljm/js-lib';
-import {
-	Effect,
-	Either,
-	Equal,
-	Equivalence,
-	List,
-	MutableHashSet,
-	Option,
-	Predicate,
-	ReadonlyArray,
-	pipe
-} from 'effect';
+import { Effect, Either, Equal, Equivalence, HashSet, List, Option, Predicate, ReadonlyArray, pipe } from 'effect';
 import { Concurrency } from 'effect/Types';
 
 export interface PredicateEffect<in Z, out R, out E> {
@@ -214,15 +203,15 @@ export const unfoldTree = <R, E, A, B>({
 			parents
 		}: {
 			readonly currentSeed: B;
-			readonly parents: MutableHashSet.MutableHashSet<B>;
+			readonly parents: HashSet.HashSet<B>;
 		}): Effect.Effect<R, E, Tree.Tree<A>> =>
 			Effect.gen(function* (_) {
-				const [nextValue, nextSeeds] = yield* _(unfoldfunction(currentSeed, MutableHashSet.has(parents, currentSeed)));
+				const [nextValue, nextSeeds] = yield* _(unfoldfunction(currentSeed, HashSet.has(parents, currentSeed)));
 				const forest = yield* _(
 					pipe(
 						nextSeeds,
 						ReadonlyArray.map((seed) =>
-							cachedInternalUnfoldTree({ currentSeed: seed, parents: MutableHashSet.add(parents, currentSeed) })
+							cachedInternalUnfoldTree({ currentSeed: seed, parents: HashSet.add(parents, currentSeed) })
 						),
 						Effect.allWith(concurrencyOptions)
 					)
@@ -242,5 +231,5 @@ export const unfoldTree = <R, E, A, B>({
 			  )
 			: internalUnfoldTree;
 
-		return yield* _(cachedInternalUnfoldTree({ currentSeed: seed, parents: MutableHashSet.empty<B>() }));
+		return yield* _(cachedInternalUnfoldTree({ currentSeed: seed, parents: HashSet.empty<B>() }));
 	});

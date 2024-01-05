@@ -1,5 +1,5 @@
 import { EqValue } from '#mjljm/effect-lib/index';
-import { Equal, Equivalence, MutableHashMap, MutableList, Option, Predicate, identity } from 'effect';
+import { Equal, Equivalence, Function, MutableHashMap, MutableList, Option, Predicate, identity } from 'effect';
 
 //const moduleTag = '@mjljm/effect-lib/effect/Function/';
 
@@ -222,7 +222,7 @@ export const memoize = <A, B>(f: (a: A) => B, Eq?: Equivalence.Equivalence<A>): 
 		cache: MutableHashMap.MutableHashMap<EqValue.Type<A>, B>;
 	};
 
-	const cachedF: CachedF = ((a: A) => {
+	const cachedF = Function.unsafeCoerce<unknown, CachedF>((a: A) => {
 		const eqValueA = EqValue.make({ value: a, Eq });
 		const cachedA = MutableHashMap.get(cachedF.cache, eqValueA);
 		if (Option.isSome(cachedA)) return cachedA.value;
@@ -231,7 +231,7 @@ export const memoize = <A, B>(f: (a: A) => B, Eq?: Equivalence.Equivalence<A>): 
 			MutableHashMap.set(cachedF.cache, eqValueA, result);
 			return result;
 		}
-	}) as CachedF;
+	});
 
 	cachedF.cache = MutableHashMap.empty();
 	return cachedF;
@@ -248,12 +248,14 @@ export const make: <A>(s: Readonly<A>) => Readonly<A> = identity;
 export const makeWithId =
 	<A>(TypeId: symbol, prototype: Equal.Equal | null = null) =>
 	(params: Readonly<Omit<A, symbol>>): Readonly<A> =>
-		Object.assign(
-			Object.create(prototype, {
-				[TypeId]: { value: TypeId }
-			}),
-			params
-		) as A;
+		Function.unsafeCoerce<unknown, A>(
+			Object.assign(
+				Object.create(prototype, {
+					[TypeId]: { value: TypeId }
+				}),
+				params
+			)
+		);
 
 /**
  * Generic type guard for object with Id
@@ -262,6 +264,31 @@ export const isOfId =
 	<Type>(TypeId: symbol) =>
 	(u: unknown): u is Type =>
 		Predicate.hasProperty(u, TypeId);
+
+/**
+ * Pipable if
+ */
+export const iif: {
+	<A, B extends A>(cond: Predicate.Refinement<A, B>, onTrue: (b: B) => A): (a: A) => A;
+	<A>(cond: Predicate.Predicate<A>, onTrue: (a: A) => A): (a: A) => A;
+} =
+	<A>(cond: Predicate.Predicate<A>, onTrue: (a: A) => A) =>
+	(a: A) =>
+		cond(a) ? onTrue(a) : a;
+
+/**
+ * Pipable if else
+ */
+export const ifElse: {
+	<A, B extends A, C>(
+		cond: Predicate.Refinement<A, B>,
+		options: { onTrue: (b: B) => C; onFalse: (a: A) => C }
+	): (a: A) => C;
+	<A, B>(cond: Predicate.Predicate<A>, options: { onTrue: (a: A) => B; onFalse: (a: A) => B }): (a: A) => B;
+} =
+	<A, B>(cond: Predicate.Predicate<A>, options: { onTrue: (a: A) => B; onFalse: (a: A) => B }) =>
+	(a: A) =>
+		cond(a) ? options.onTrue(a) : options.onFalse(a);
 
 /**
  * Type qui transforme une union en inetrsection

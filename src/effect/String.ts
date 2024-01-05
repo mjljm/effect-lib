@@ -1,4 +1,4 @@
-import { MError, MFunction, MOption } from '#mjljm/effect-lib/index';
+import { MError, MFunction } from '#mjljm/effect-lib/index';
 import { Either, Function, HashMap, MutableHashSet, Option, ReadonlyArray, String, identity, pipe } from 'effect';
 
 const moduleTag = '@mjljm/effect-lib/effect/String/';
@@ -157,15 +157,31 @@ export const templater =
  * @param obj
  * @returns
  */
-export const tryToStringToJson = (obj: MFunction.Record): Option.Option<string> =>
-	pipe(
+export const tryToStringToJson = (obj: MFunction.Record): Option.Option<string> => {
+	const safeApply = (f: unknown): Option.Option<string> => {
+		if (typeof f === 'function') {
+			try {
+				return pipe(
+					f.apply(obj),
+					MFunction.ifElse(MFunction.isString, {
+						onTrue: (result) => Option.some(result),
+						onFalse: () => Option.none()
+					})
+				);
+			} catch (e) {
+				return Option.none();
+			}
+		} else return Option.none();
+	};
+	return pipe(
 		obj['toString'],
-		(toString) =>
-			toString !== Object.prototype.toString
-				? MOption.liftUnknown(MFunction.isString)(toString).apply(obj)
-				: Option.none(),
-		Option.orElse(() => MOption.liftUnknown(MFunction.isString)(obj['toJson']).apply(obj))
+		MFunction.ifElse((toString) => toString === Object.prototype.toString, {
+			onTrue: () => Option.none(),
+			onFalse: safeApply
+		}),
+		Option.orElse(() => safeApply(obj['toJson']))
 	);
+};
 
 /**
  * Returns the provided `string` `that` if `self` is empty, otherwise returns `self`.

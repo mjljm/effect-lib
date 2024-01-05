@@ -1,6 +1,6 @@
 import { MFunction } from '#mjljm/effect-lib/index';
 import { Monoid } from '@effect/typeclass';
-import { Equal, Equivalence, Function, MutableHashSet, ReadonlyArray, pipe } from 'effect';
+import { Equal, Equivalence, Function, HashSet, ReadonlyArray, pipe } from 'effect';
 
 //const moduleTag = '@mjljm/effect-lib/mydata/Tree/';
 
@@ -64,14 +64,28 @@ export const unfold = <A, B>({
 		parents
 	}: {
 		readonly currentSeed: B;
-		readonly parents: MutableHashSet.MutableHashSet<B>;
+		readonly parents: HashSet.HashSet<B>;
 	}): Tree<A> =>
-		pipe(unfoldfunction(currentSeed, MutableHashSet.has(parents, currentSeed)), ([nextValue, nextSeeds]) => ({
-			value: nextValue,
-			forest: ReadonlyArray.map(nextSeeds, (seed) =>
-				cachedInternalUnfold({ currentSeed: seed, parents: MutableHashSet.add(parents, currentSeed) })
-			)
-		}));
+		pipe(
+			unfoldfunction(
+				/*console.log(
+					`key: ${currentSeed.key.value} parents: ${pipe(
+						HashSet.values(parents),
+						ReadonlyArray.fromIterable,
+						ReadonlyArray.map((s) => JSON.stringify(s.value)),
+						ReadonlyArray.join(';')
+					)} circ:${HashSet.has(parents, currentSeed)}`
+				),*/
+				currentSeed,
+				HashSet.has(parents, currentSeed)
+			),
+			([nextValue, nextSeeds]) => ({
+				value: nextValue,
+				forest: ReadonlyArray.map(nextSeeds, (seed) =>
+					cachedInternalUnfold({ currentSeed: seed, parents: HashSet.add(parents, currentSeed) })
+				)
+			})
+		);
 
 	// The cache is destroyed with this object. So its is necessarily cleaned on function exit even if it throws
 	const cachedInternalUnfold = memoize
@@ -81,7 +95,7 @@ export const unfold = <A, B>({
 		  )
 		: internalUnfold;
 
-	return cachedInternalUnfold({ currentSeed: seed, parents: MutableHashSet.empty<B>() });
+	return cachedInternalUnfold({ currentSeed: seed, parents: HashSet.empty<B>() });
 };
 
 /**
