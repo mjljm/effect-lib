@@ -1,6 +1,7 @@
 import { MFunction } from '#mjljm/effect-lib/index';
 import { Monoid } from '@effect/typeclass';
 import { Equal, Equivalence, Function, HashSet, ReadonlyArray, pipe } from 'effect';
+import { NoInfer } from 'effect/Types';
 
 //const moduleTag = '@mjljm/effect-lib/mydata/Tree/';
 
@@ -18,6 +19,12 @@ export interface Tree<out A> {
 }
 
 /**
+ * Utility types
+ */
+
+export type Infer<T extends Tree<unknown>> = T extends Tree<infer A> ? A : never;
+
+/**
  * @category constructor
  */
 const Tree = <A>(fa: Tree<A>) => MFunction.make<Tree<A>>(fa);
@@ -27,7 +34,7 @@ const Tree = <A>(fa: Tree<A>) => MFunction.make<Tree<A>>(fa);
  *
  * @category constructors
  */
-export const unfoldTree = <A, B>(seed: B, f: (seed: B) => [nextValue: A, nextSeeds: ReadonlyArray<B>]): Tree<A> =>
+export const unfoldTree = <B, A>(seed: B, f: (seed: B) => [nextValue: A, nextSeeds: ReadonlyArray<B>]): Tree<A> =>
 	pipe(f(seed), ([nextValue, nextSeeds]) => ({
 		value: nextValue,
 		forest: unfoldForest(nextSeeds, f)
@@ -38,7 +45,7 @@ export const unfoldTree = <A, B>(seed: B, f: (seed: B) => [nextValue: A, nextSee
  *
  * @category constructors
  */
-export function unfoldForest<A, B>(
+export function unfoldForest<B, A>(
 	seeds: ReadonlyArray<B>,
 	f: (seed: B) => [nextValue: A, nextSeeds: ReadonlyArray<B>]
 ): Forest<A> {
@@ -50,7 +57,7 @@ export function unfoldForest<A, B>(
  *
  * @category constructors
  */
-export const unfold = <A, B>({
+export const unfold = <B, A>({
 	memoize,
 	seed,
 	unfoldfunction
@@ -126,7 +133,7 @@ export const unfold = <A, B>({
  * @category folding
  */
 export const fold =
-	<A, B>(f: (a: A, bs: ReadonlyArray<B>, level: number) => B) =>
+	<B, A>(f: (a: NoInfer<A>, bs: ReadonlyArray<B>, level: number) => B) =>
 	(self: Tree<A>): B => {
 		const go =
 			(level: number) =>
@@ -139,7 +146,7 @@ export const fold =
  * @category sequencing
  */
 export const flatMap =
-	<A, B>(f: (a: A, level: number) => Tree<B>) =>
+	<B, A>(f: (a: NoInfer<A>, level: number) => Tree<B>) =>
 	(self: Tree<A>): Tree<B> => {
 		const go =
 			(level: number) =>
@@ -158,7 +165,7 @@ export const flatMap =
  * Returns a new tree in which the value of each node is replaced by the result of a function that takes the node as parameter in top-down order. More powerful than map which takes only the value of the node as parameter
  */
 export const extendDown =
-	<A, B>(f: (fa: Tree<A>, level: number) => B) =>
+	<B, A>(f: (fa: Tree<NoInfer<A>>, level: number) => B) =>
 	(self: Tree<A>): Tree<B> => {
 		const go =
 			(level: number) =>
@@ -173,7 +180,7 @@ export const extendDown =
  * Returns a new tree in which the value of each node is replaced by the result of a function that takes the node as parameter in bottom-up order. More powerful than map which takes only the value of the node as parameter
  */
 export const extendUp =
-	<A, B>(f: (fa: Tree<A>, level: number) => B) =>
+	<B, A>(f: (fa: Tree<NoInfer<A>>, level: number) => B) =>
 	(self: Tree<A>): Tree<B> => {
 		const go =
 			(level: number) =>
@@ -198,7 +205,7 @@ export const flatten: <A>(self: Tree<Tree<A>>) => Tree<A> = flatMap(Function.ide
  * @category mapping
  */
 export const map =
-	<A, B>(f: (a: A, level: number) => B) =>
+	<B, A>(f: (a: NoInfer<A>, level: number) => B) =>
 	(self: Tree<A>): Tree<B> => {
 		const go =
 			(level: number) =>
@@ -214,7 +221,7 @@ export const map =
  * @category folding
  */
 export const reduce =
-	<A, B>(b: B, f: (b: B, a: A, level: number) => B) =>
+	<B, A>(b: B, f: (b: B, a: NoInfer<A>, level: number) => B) =>
 	(self: Tree<A>): B => {
 		const go =
 			(b: B, level: number) =>
@@ -234,7 +241,7 @@ export const reduce =
  * @category folding
  */
 export const foldMap =
-	<B, A>(M: Monoid.Monoid<B>, f: (a: A, level: number) => B) =>
+	<B, A>(M: Monoid.Monoid<B>, f: (a: NoInfer<A>, level: number) => B) =>
 	(self: Tree<A>): B =>
 		pipe(
 			self,
@@ -246,7 +253,7 @@ export const foldMap =
  * @category folding
  */
 export const reduceRight =
-	<A, B>(b: B, f: (b: B, a: A, level: number) => B) =>
+	<B, A>(b: B, f: (b: B, a: NoInfer<A>, level: number) => B) =>
 	(self: Tree<A>): B => {
 		const go =
 			(b: B, level: number) =>

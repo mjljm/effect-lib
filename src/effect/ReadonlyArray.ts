@@ -1,4 +1,5 @@
 import { Either, Function, Option, Predicate, ReadonlyArray, Tuple, pipe } from 'effect';
+import { NoInfer } from 'effect/Types';
 
 /**
  * Returns true if the provided ReadonlyArray contains duplicates
@@ -14,7 +15,7 @@ export const hasDuplicates = <A>(self: ReadonlyArray<A>): boolean =>
  * @since 1.0.0
  */
 export const hasDuplicatesWith =
-	<A>(isEquivalent: (self: A, that: A) => boolean) =>
+	<A>(isEquivalent: (self: NoInfer<A>, that: NoInfer<A>) => boolean) =>
 	(self: ReadonlyArray<A>): boolean =>
 		pipe(self, ReadonlyArray.dedupeWith(isEquivalent), (as) => (as.length === self.length ? false : true));
 
@@ -31,7 +32,7 @@ export const getSingleton = <A>(self: ReadonlyArray<A>): Option.Option<A> =>
  *
  * @category getters
  * */
-export const getSingletonOrElse =
+export const getSingletonOrFailsWith =
 	<B>(error: Function.LazyArg<B>) =>
 	<A>(self: ReadonlyArray<A>): Either.Either<B, Option.Option<A>> =>
 		self.length > 1 ? Either.left(error()) : Either.right(ReadonlyArray.get(self, 0));
@@ -55,10 +56,10 @@ export const getSingletonOrThrowWith =
  * @category getters
  */
 export const findSingleton: {
-	<A, B extends A>(refinement: (a: A, i: number) => a is B): (self: Iterable<A>) => Option.Option<B>;
-	<A>(predicate: (a: A, i: number) => boolean): (self: ReadonlyArray<A>) => Option.Option<A>;
+	<B extends A, A>(refinement: (a: NoInfer<A>, i: number) => a is B): (self: Iterable<A>) => Option.Option<B>;
+	<A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => Option.Option<A>;
 } =
-	<A>(predicate: (a: A, i: number) => boolean) =>
+	<A>(predicate: (a: NoInfer<A>, i: number) => boolean) =>
 	(self: Iterable<A>): Option.Option<A> =>
 		pipe(self, ReadonlyArray.filter(predicate), getSingleton);
 
@@ -91,7 +92,7 @@ export const findAll =
  */
 export const orElse =
 	<B>(that: Function.LazyArg<ReadonlyArray<B>>) =>
-	<A>(self: ReadonlyArray<A>): Array<B | A> =>
+	<A>(self: ReadonlyArray<A>): ReadonlyArray<B | A> =>
 		ReadonlyArray.isEmptyReadonlyArray(self) ? that() : self;
 
 /**

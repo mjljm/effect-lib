@@ -161,13 +161,7 @@ export const tryToStringToJson = (obj: MFunction.Record): Option.Option<string> 
 	const safeApply = (f: unknown): Option.Option<string> => {
 		if (typeof f === 'function') {
 			try {
-				return pipe(
-					f.apply(obj),
-					MFunction.ifElse(MFunction.isString, {
-						onTrue: (result) => Option.some(result),
-						onFalse: () => Option.none()
-					})
-				);
+				return pipe(f.apply(obj), Option.liftPredicate(MFunction.isString));
 			} catch (e) {
 				return Option.none();
 			}
@@ -175,10 +169,8 @@ export const tryToStringToJson = (obj: MFunction.Record): Option.Option<string> 
 	};
 	return pipe(
 		obj['toString'],
-		MFunction.ifElse((toString) => toString === Object.prototype.toString, {
-			onTrue: () => Option.none(),
-			onFalse: safeApply
-		}),
+		Option.liftPredicate((toString) => toString === Object.prototype.toString),
+		Option.flatMap(safeApply),
 		Option.orElse(() => safeApply(obj['toJson']))
 	);
 };

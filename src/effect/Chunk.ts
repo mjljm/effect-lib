@@ -1,13 +1,5 @@
-import {
-	Chunk,
-	Either,
-	Function,
-	Option,
-	Predicate,
-	ReadonlyArray,
-	Tuple,
-	pipe
-} from 'effect';
+import { Chunk, Either, Function, Option, Predicate, ReadonlyArray, Tuple, pipe } from 'effect';
+import { NoInfer } from 'effect/Types';
 /**
  * Returns true if the provided Chunk contains duplicates
  * @category utils
@@ -29,7 +21,7 @@ export const getSingleton = <A>(self: Chunk.Chunk<A>): Option.Option<A> =>
  *
  * @category getters
  * */
-export const getSingletonOrElse =
+export const getSingletonOrFailsWith =
 	<B>(error: Function.LazyArg<B>) =>
 	<A>(self: Chunk.Chunk<A>): Either.Either<B, Option.Option<A>> =>
 		self.length > 1 ? Either.left(error()) : Either.right(Chunk.get(self, 0));
@@ -54,30 +46,19 @@ export const getSingletonOrThrowWith =
  * @since 1.0.0
  */
 export const findSingleton: {
-	<A, B extends A>(
-		refinement: Predicate.Refinement<A, B>
-	): (self: Chunk.Chunk<A>) => Option.Option<B>;
-	<A>(
-		predicate: Predicate.Predicate<A>
-	): (self: Chunk.Chunk<A>) => Option.Option<A>;
+	<B extends A, A>(refinement: Predicate.Refinement<NoInfer<A>, B>): (self: Chunk.Chunk<A>) => Option.Option<B>;
+	<A>(predicate: Predicate.Predicate<NoInfer<A>>): (self: Chunk.Chunk<A>) => Option.Option<A>;
 } =
-	<A>(predicate: Predicate.Predicate<A>) =>
+	<A>(predicate: Predicate.Predicate<NoInfer<A>>) =>
 	(self: Chunk.Chunk<A>) =>
 		pipe(self, Chunk.filter(predicate), getSingleton);
 
 /**
  * Split a chunk A in two arrays [B,C], B containing all the elements at even indexes, C all elements at odd indexes
  */
-export const splitOddEvenIndexes = <A>(
-	self: Chunk.Chunk<A>
-): [Chunk.Chunk<A>, Chunk.Chunk<A>] =>
-	Chunk.reduce(
-		self,
-		Tuple.make(Chunk.empty<A>(), Chunk.empty<A>()),
-		([even, odd], a) =>
-			even.length <= odd.length
-				? Tuple.make(Chunk.append(even, a), odd)
-				: Tuple.make(even, Chunk.append(odd, a))
+export const splitOddEvenIndexes = <A>(self: Chunk.Chunk<A>): [Chunk.Chunk<A>, Chunk.Chunk<A>] =>
+	Chunk.reduce(self, Tuple.make(Chunk.empty<A>(), Chunk.empty<A>()), ([even, odd], a) =>
+		even.length <= odd.length ? Tuple.make(Chunk.append(even, a), odd) : Tuple.make(even, Chunk.append(odd, a))
 	);
 
 /**
@@ -88,9 +69,7 @@ export const splitOddEvenIndexes = <A>(
 export const findAll =
 	<B extends A, A = B>(predicate: Predicate.Predicate<A>) =>
 	(self: Iterable<B>): Chunk.Chunk<number> =>
-		ReadonlyArray.reduce(self, Chunk.empty<number>(), (acc, a, i) =>
-			predicate(a) ? Chunk.append(acc, i) : acc
-		);
+		ReadonlyArray.reduce(self, Chunk.empty<number>(), (acc, a, i) => (predicate(a) ? Chunk.append(acc, i) : acc));
 
 /**
  * Returns the provided `Chunk` `that` if `self` is empty, otherwise returns `self`.

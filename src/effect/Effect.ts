@@ -1,9 +1,9 @@
 import { MCause, MEffect, MError, Tree } from '#mjljm/effect-lib/index';
 import { ANSI, StringUtils } from '@mjljm/js-lib';
-import { Effect, Either, Equal, Equivalence, HashSet, List, Option, Predicate, ReadonlyArray, pipe } from 'effect';
+import { Effect, Equal, Equivalence, HashSet, List, ReadonlyArray, pipe } from 'effect';
 import { Concurrency } from 'effect/Types';
 
-export interface PredicateEffect<in Z, out R, out E> {
+export interface Predicate<in Z, out R, out E> {
 	(x: Z): Effect.Effect<R, E, boolean>;
 }
 
@@ -27,7 +27,7 @@ export const clearAndLogAllCauses =
 export const whileDo = <Z, R1, E1, R2, E2>(
 	initial: Z,
 	options: {
-		readonly predicate: MEffect.PredicateEffect<Z, R1, E1>;
+		readonly predicate: MEffect.Predicate<Z, R1, E1>;
 		readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
 	}
 ): Effect.Effect<R1 | R2, E1 | E2, Z> =>
@@ -46,7 +46,7 @@ export const doWhile = <Z, R1, E1, R2, E2>(
 	initial: Z,
 	options: {
 		readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
-		readonly predicate: MEffect.PredicateEffect<Z, R1, E1>;
+		readonly predicate: MEffect.Predicate<Z, R1, E1>;
 	}
 ): Effect.Effect<R1 | R2, E1 | E2, Z> =>
 	Effect.suspend(() =>
@@ -66,7 +66,7 @@ export const whileDoAccum: {
 		initial: Z,
 		options: {
 			readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
-			readonly predicate: MEffect.PredicateEffect<Z, R1, E1>;
+			readonly predicate: MEffect.Predicate<Z, R1, E1>;
 			readonly body: (z: Z) => Effect.Effect<R3, E3, A>;
 			readonly discard?: false;
 		}
@@ -75,7 +75,7 @@ export const whileDoAccum: {
 		initial: Z,
 		options: {
 			readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
-			readonly while: MEffect.PredicateEffect<Z, R1, E1>;
+			readonly while: MEffect.Predicate<Z, R1, E1>;
 			readonly body: (z: Z) => Effect.Effect<R3, E3, A>;
 			readonly discard: true;
 		}
@@ -84,7 +84,7 @@ export const whileDoAccum: {
 	initial: Z,
 	options: {
 		readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
-		readonly while: MEffect.PredicateEffect<Z, R1, E1>;
+		readonly while: MEffect.Predicate<Z, R1, E1>;
 		readonly body: (z: Z) => Effect.Effect<R3, E3, A>;
 		readonly discard?: boolean;
 	}
@@ -95,7 +95,7 @@ export const whileDoAccum: {
 
 const loopInternal = <Z, R1, E1, R2, E2, R3, E3, A>(
 	initial: Z,
-	cont: MEffect.PredicateEffect<Z, R1, E1>,
+	cont: MEffect.Predicate<Z, R1, E1>,
 	inc: (z: Z) => Effect.Effect<R2, E2, Z>,
 	body: (z: Z) => Effect.Effect<R3, E3, A>
 ): Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, List.List<A>> =>
@@ -109,7 +109,7 @@ const loopInternal = <Z, R1, E1, R2, E2, R3, E3, A>(
 
 const loopDiscard = <Z, R1, E1, R2, E2, R3, E3, A>(
 	initial: Z,
-	cont: MEffect.PredicateEffect<Z, R1, E1>,
+	cont: MEffect.Predicate<Z, R1, E1>,
 	inc: (z: Z) => Effect.Effect<R2, E2, Z>,
 	body: (z: Z) => Effect.Effect<R3, E3, A>
 ): Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, void> =>
@@ -147,30 +147,6 @@ export const cachedFunctionWithLogging = <R, E, A, B>(
 				return b;
 			});
 	});
-
-/**
- * Constructs an Effect from an Either
- */
-export const fromEither = <E, A>(value: Either.Either<E, A>): Effect.Effect<never, E, A> =>
-	// Other implementation, shorter but slower: Effect.flatMap(Effect.unit, () => value);
-	Either.match(value, {
-		onLeft: (e) => Effect.fail(e),
-		onRight: (a) => Effect.succeed(a)
-	});
-
-/**
- * If the value of the `self` fulfills the predicate, returns an Effect of a some. Otherwise returns an Effect of a none.
- */
-
-export const filterOption: {
-	<A, B extends A>(
-		refinement: Predicate.Refinement<A, B>
-	): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<B>>;
-	<A>(predicate: Predicate.Predicate<A>): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<A>>;
-} =
-	<A>(predicate: Predicate.Predicate<A>) =>
-	<R, E>(self: Effect.Effect<R, E, A>) =>
-		Effect.map(self, (a) => (predicate(a) ? Option.some(a) : Option.none()));
 
 /**
  * Effectful unfoldTree
