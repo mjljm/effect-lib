@@ -347,7 +347,14 @@ export const isFunction = (u: unknown): u is AnyFunction => typeof u === 'functi
 // Warning : isObjectRecord lets class instances through although thet don't satisfy ObjectRecord
 // But class instances do behave like ObjectRecords. So should be safe
 export const isRecord = Predicate.isRecord;
-export const isArray = Array.isArray;
+/**
+ * The following code corrects a bug in typescript where Array.isArray narrows a ReadonlyArray to any[]. To remove when this bug has been corrected. See https://github.com/microsoft/TypeScript/issues/17002
+ */
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ArrayType<T> = Extract<true extends T & false ? any[] : T extends readonly any[] ? T : unknown[], T>;
+
+export const isArray = <T>(arg: T): arg is ArrayType<T> => Array.isArray(arg);
+
 export const isRecordOrArray = (u: unknown): u is RecordOrArray => u !== null && typeof u === 'object';
 export const isUrl = (u: unknown): u is URL => u instanceof URL;
 export const isErrorish = (u: unknown): u is Errorish =>
