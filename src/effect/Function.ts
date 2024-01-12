@@ -240,14 +240,14 @@ export const memoize = <A, B>(f: (a: A) => B, Eq?: Equivalence.Equivalence<A>): 
 /**
  * Constructor for objects that require no Id and no equal operator
  */
-export const make: <A>(s: Readonly<A>) => Readonly<A> = identity;
+export const make: <A>(s: Readonly<A>) => A = identity;
 
 /**
  * Constructor for objects of a simple type that require an Id and an equal operator
  */
 export const makeWithId =
 	<A>(TypeId: symbol, prototype: Equal.Equal | null = null) =>
-	(params: Readonly<Omit<A, symbol>>): Readonly<A> =>
+	(params: Readonly<Omit<A, symbol>>): A =>
 		Function.unsafeCoerce<unknown, A>(
 			Object.assign(
 				Object.create(prototype, {
@@ -291,11 +291,22 @@ export const iif: {
 		cond(a) ? options.onTrue(a) : options.onFalse(a);*/
 
 /**
- * Type qui transforme une union en inetrsection
+ * Type qui transforme une union en intersection
  */
-export type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) extends (k: infer I) => void
+/*export type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) extends (k: infer I) => void
 	? I
-	: never;
+	: never;*/
+
+/**
+ * Type that expands a type
+ */
+/*export type Develop<P> = P extends GenericPath<infer X, infer Y>
+	? Y extends unknown
+			? X extends unknown
+				? GenericPath<X, Y>
+				: never
+			: never
+		: never*/
 
 /**
  * Type qui représente un vrai objet (pas un tableau, pas une fonction, pas une valeur nulle ou undefined). Typescript considère que les instances de classe ne répondent pas à cette définition. Alors qu'elles y répondent.

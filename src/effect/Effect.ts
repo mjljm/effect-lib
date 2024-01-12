@@ -3,10 +3,11 @@ import { ANSI, StringUtils } from '@mjljm/js-lib';
 import { Effect, Equal, Equivalence, HashSet, List, ReadonlyArray, pipe } from 'effect';
 import { Concurrency } from 'effect/Types';
 
-export interface Predicate<in Z, out R, out E> {
+interface EffectPredicate<in Z, out R, out E> {
 	(x: Z): Effect.Effect<R, E, boolean>;
 }
 
+export { type EffectPredicate as Predicate };
 /**
  * Clears the error channel after logging all possible causes
  */
@@ -209,3 +210,24 @@ export const unfoldTree = <R, E, A, B>({
 
 		return yield* _(cachedInternalUnfoldTree({ currentSeed: seed, parents: HashSet.empty<B>() }));
 	});
+
+/*export const filterOption: {
+	<R, E, A, B extends A>(
+		refinement: Predicate.Refinement<A, B>
+	): (self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, Option.Option<B>>;
+	<R, E, B extends A, A = B>(
+		predicate: Predicate.Predicate<A>
+	): (self: Effect.Effect<R, E, B>) => Effect.Effect<R, E, Option.Option<B>>;
+} =
+	<R, E, B extends A, A = B>(predicate: Predicate.Predicate<A>) =>
+	(self: Effect.Effect<R, E, B>): Effect.Effect<R, E, Option.Option<B>> =>
+		Effect.map(self, Option.liftPredicate(predicate));*/
+
+export const filterEffectOrFail =
+	<R1, E1, E2, A extends X & Y, X = A, Y = A>(filter: EffectPredicate<X, R1, E1>, orFailWith: (a: Y) => E2) =>
+	<R, E>(self: Effect.Effect<R, E, A>): Effect.Effect<R | R1, E1 | E2 | E, A> =>
+		Effect.gen(function* (_) {
+			const a = yield* _(self);
+			const applies = yield* _(filter(a));
+			return applies ? a : yield* _(Effect.fail(orFailWith(a)));
+		});
