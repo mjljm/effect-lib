@@ -223,6 +223,10 @@ export const unfoldTree = <R, E, A, B>({
 	(self: Effect.Effect<R, E, B>): Effect.Effect<R, E, Option.Option<B>> =>
 		Effect.map(self, Option.liftPredicate(predicate));*/
 
+/**
+ *
+ *To remove when Effect.filterOrFail accepts an effectful predicate
+ */
 export const filterEffectOrFail =
 	<R1, E1, E2, A extends X & Y, X = A, Y = A>(filter: EffectPredicate<X, R1, E1>, orFailWith: (a: Y) => E2) =>
 	<R, E>(self: Effect.Effect<R, E, A>): Effect.Effect<R | R1, E1 | E2 | E, A> =>
