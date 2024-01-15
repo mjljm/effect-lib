@@ -1,17 +1,16 @@
-import { MError, MFunction } from '#mjljm/effect-lib/index';
-import { AST, Arbitrary, ParseResult, Pretty, Equivalence as SEquivalence, Schema } from '@effect/schema';
+import { MError } from '#mjljm/effect-lib/index';
+import { AST, Schema } from '@effect/schema';
 
 import { StringUtils } from '@mjljm/js-lib';
-import { Effect, Either, Equivalence, Option, ReadonlyArray, String, pipe } from 'effect';
+import { Effect, Either, Option, ReadonlyArray, String, pipe } from 'effect';
 import { DateTime } from 'luxon';
 
 // Parsing
 export const parse =
-	<_, A>(schema: Schema.Schema<_, A>) =>
-	(options?: AST.ParseOptions) =>
-	(i: unknown) =>
+	<_, A>(schema: Schema.Schema<_, A>, options?: AST.ParseOptions) =>
+	(i: unknown, overrideoptions?: AST.ParseOptions) =>
 		pipe(
-			Schema.parse(schema)(i, options),
+			Schema.parse(schema, options)(i, overrideoptions),
 			Effect.catchAll(
 				(e) =>
 					new MError.EffectSchema({
@@ -21,11 +20,10 @@ export const parse =
 		);
 
 export const parseEither =
-	<_, A>(schema: Schema.Schema<_, A>) =>
-	(options?: AST.ParseOptions) =>
-	(i: unknown) =>
+	<_, A>(schema: Schema.Schema<_, A>, options?: AST.ParseOptions) =>
+	(i: unknown, overrideoptions?: AST.ParseOptions) =>
 		pipe(
-			Schema.parseEither(schema)(i, options),
+			Schema.parseEither(schema, options)(i, overrideoptions),
 			Either.mapLeft(
 				(e) =>
 					new MError.EffectSchema({
@@ -39,22 +37,26 @@ export const parseEither =
  * @category URL constructor
  */
 
-const urlArbitrary = (): Arbitrary.Arbitrary<URL> => (fc) => fc.webUrl().map((s) => new URL(s));
+/*const urlArbitrary = (): Arbitrary.Arbitrary<URL> => (fc) => fc.webUrl().map((s) => new URL(s));
 const urlPretty = (): Pretty.Pretty<URL> => (url: URL) => `new URL(${url.toJSON()})`;
-const urlEquivalence: Equivalence.Equivalence<URL> = Equivalence.mapInput(Equivalence.string, (url) => url.toJSON());
+const urlEquivalence: Equivalence.Equivalence<URL> = Equivalence.mapInput(Equivalence.string, (url) =>
+	url.toJSON()
+);*/
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-export const UrlFromSelf: Schema.Schema<URL> = Schema.declare(
+// See Schema.DateFromSelf for a model
+/*export const UrlFromSelf: Schema.Schema<URL> = Schema.declare(
 	[],
 	Schema.struct({}),
-	() => (u, _, ast) => (MFunction.isUrl(u) ? ParseResult.success(u) : ParseResult.failure(ParseResult.type(ast, u))),
+	() => (u, _, ast) =>
+		MFunction.isUrl(u) ? ParseResult.success(u) : ParseResult.failure(ParseResult.type(ast, u)),
 	{
 		[AST.IdentifierAnnotationId]: 'Url',
 		[Pretty.PrettyHookId]: urlPretty,
 		[Arbitrary.ArbitraryHookId]: urlArbitrary,
 		[SEquivalence.EquivalenceHookId]: () => urlEquivalence
 	}
-);
+);*/
 
 // Filters
 // String filters
@@ -129,7 +131,7 @@ export const schemaFromIsoToSchemaFromYyyymmdd = <T>(fromIso: Schema.Schema<stri
  * Schema that takes a string 'YYYYMMDD' and returns a date.
  *
  */
-export const DateFromYyyymmdd = pipe(Schema.string, Schema.dateFromString, schemaFromIsoToSchemaFromYyyymmdd);
+export const DateFromYyyymmdd = pipe(Schema.DateFromString, schemaFromIsoToSchemaFromYyyymmdd);
 
 /**
  * Transforms a schema<T,CSVString> to a schema<T,ReadonlyArray<string>.
@@ -143,7 +145,7 @@ export const schemaToCsvToSchemaToStringArray =
 /**
  * Transforms a string representing a URL to a URL object
  */
-export const stringToUrl = Schema.transformOrFail(
+/*export const stringToUrl = Schema.transformOrFail(
 	Schema.string,
 	UrlFromSelf,
 	(s) => {
@@ -154,4 +156,4 @@ export const stringToUrl = Schema.transformOrFail(
 		}
 	},
 	(url) => ParseResult.success(url.toJSON())
-);
+);*/

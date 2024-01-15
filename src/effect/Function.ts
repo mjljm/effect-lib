@@ -300,10 +300,10 @@ export const iif: {
 /**
  * Type that expands a type
  */
-/*export type Develop<P> = P extends GenericPath<infer X, infer Y>
+/*export type Develop<P> = P extends TypedPath<infer X, infer Y>
 	? Y extends unknown
 			? X extends unknown
-				? GenericPath<X, Y>
+				? TypedPath<X, Y>
 				: never
 			: never
 		: never*/
