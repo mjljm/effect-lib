@@ -2,35 +2,29 @@ import { MError } from '#mjljm/effect-lib/index';
 import { AST, Schema } from '@effect/schema';
 
 import { StringUtils } from '@mjljm/js-lib';
-import { Effect, Either, Option, ReadonlyArray, String, pipe } from 'effect';
+import { Effect, Option, ReadonlyArray, String, pipe } from 'effect';
 import { DateTime } from 'luxon';
 
-// Parsing
-export const parse =
-	<_, A>(schema: Schema.Schema<_, A>, options?: AST.ParseOptions) =>
-	(i: unknown, overrideoptions?: AST.ParseOptions) =>
-		pipe(
-			Schema.parse(schema, options)(i, overrideoptions),
-			Effect.catchAll(
-				(e) =>
-					new MError.EffectSchema({
-						originalError: e
-					})
-			)
-		);
+export type CompiledParser<A> = (
+	i: unknown,
+	overrideoptions?: AST.ParseOptions
+) => Effect.Effect<never, MError.EffectSchema, A>;
 
-export const parseEither =
-	<_, A>(schema: Schema.Schema<_, A>, options?: AST.ParseOptions) =>
-	(i: unknown, overrideoptions?: AST.ParseOptions) =>
-		pipe(
-			Schema.parseEither(schema, options)(i, overrideoptions),
-			Either.mapLeft(
-				(e) =>
-					new MError.EffectSchema({
-						originalError: e
-					})
-			)
+// Parsing
+export const makeCompiledParser = <_, A>(schema: Schema.Schema<_, A>): CompiledParser<A> => {
+	const compiledParser = Schema.parse(schema, {
+		errors: 'all',
+		onExcessProperty: 'error'
+	});
+	return (i, overrideoptions) =>
+		Effect.catchAll(
+			compiledParser(i, overrideoptions),
+			(e) =>
+				new MError.EffectSchema({
+					originalError: e
+				})
 		);
+};
 
 // New data types
 /**

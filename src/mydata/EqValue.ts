@@ -1,6 +1,6 @@
 import { Equal, Equivalence, Hash } from 'effect';
 
-const moduleTag = '@mjljm/effect-lib/mydata/EqValue/';
+//const moduleTag = '@mjljm/effect-lib/mydata/EqValue/';
 
 /**
  * MODEL

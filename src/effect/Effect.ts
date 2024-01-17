@@ -1,5 +1,5 @@
 import { MCause, MEffect, MError, Tree } from '#mjljm/effect-lib/index';
-import { ANSI, StringUtils } from '@mjljm/js-lib';
+import { ANSI, StringUtils, TypedPath } from '@mjljm/js-lib';
 import { Effect, Equal, Equivalence, HashSet, List, ReadonlyArray, pipe } from 'effect';
 import { Concurrency } from 'effect/Types';
 
@@ -12,13 +12,13 @@ export { type EffectPredicate as Predicate };
  * Clears the error channel after logging all possible causes
  */
 export const clearAndLogAllCauses =
-	(srcDirPath: string, stringify: (u: unknown) => string, tabChar?: string) =>
+	(thisProgramPath: TypedPath.RealAbsoluteFolderPath, stringify: (u: unknown) => string, tabChar: string) =>
 	<R, E extends MError.WithOriginalCause, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, never, A | void> =>
 		Effect.catchAllCause(self, (c) =>
-			pipe(c, MCause.toJson(srcDirPath, stringify, tabChar), (errorText) =>
+			pipe(c, MCause.toJson(thisProgramPath, stringify, tabChar), (errorText) =>
 				errorText === ''
 					? Effect.logInfo(ANSI.green('SCRIPT EXITED SUCCESSFULLY'))
-					: Effect.logError(ANSI.red('SCRIPT FAILED\n') + StringUtils.tabify(errorText))
+					: Effect.logError(ANSI.red('SCRIPT FAILED\n') + StringUtils.tabify(tabChar)(errorText))
 			)
 		);
 
@@ -126,7 +126,7 @@ const loopDiscard = <Z, R1, E1, R2, E2, R3, E3, A>(
 /**
  * Same as Effect.cachedFunction but calls onRecalc if the result is recalculated and onExit just before exiting. Useful for debuuging
  */
-export const cachedFunctionWithLogging = <R, E, A, B>(
+/*export const cachedFunctionWithLogging = <R, E, A, B>(
 	f: (a: A) => Effect.Effect<R, E, B>,
 	onRecalcOrExit: (a: A, b: B, event: 'onRecalc' | 'onExit') => Effect.Effect<never, never, void>,
 	eq?: Equivalence.Equivalence<A>
@@ -147,7 +147,7 @@ export const cachedFunctionWithLogging = <R, E, A, B>(
 				yield* _(onRecalcOrExit(a, b, 'onExit'));
 				return b;
 			});
-	});
+	});*/
 
 /**
  * Effectful unfoldTree
@@ -205,7 +205,7 @@ export const unfoldTree = <R, E, A, B>({
 						internalUnfoldTree,
 						Equivalence.make((self, that) => Equal.equals(self.currentSeed, that.currentSeed))
 					)
-			  )
+				)
 			: internalUnfoldTree;
 
 		return yield* _(cachedInternalUnfoldTree({ currentSeed: seed, parents: HashSet.empty<B>() }));

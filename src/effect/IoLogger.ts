@@ -1,145 +1,144 @@
 import { MFiberId, MFunction } from '#mjljm/effect-lib/index';
-import { ANSI } from '@mjljm/js-lib';
-import { Equal, Logger, Option, identity, pipe } from 'effect';
+import { ANSI, StringUtils } from '@mjljm/js-lib';
+import { Effect, Function, Logger, Option } from 'effect';
 
 const moduleTag = '@mjljm/effect-lib/effect/IoLogger/';
 
 const MessageTypeId: unique symbol = Symbol.for(moduleTag + 'MessageTypeId');
 type MessageTypeId = typeof MessageTypeId;
 
+type Importance = 'title' | 'subTitle' | 'normal';
+
 interface Message {
 	readonly [MessageTypeId]: MessageTypeId;
 	readonly message: string;
-	readonly showDate: boolean;
-	readonly skipMessageFormatting: boolean;
-	readonly object: Option.Option<unknown>;
+	readonly importance: Importance;
+	readonly object: Option.Option<MFunction.RecordOrArray>;
 	readonly skipLineBefore: boolean;
 	readonly skipLineAfter: boolean;
-	readonly messageKey: Option.Option<string>;
 }
 
+const tabChar = '  ';
 /**
  * Type guards
  */
-export const isMessage = MFunction.isOfId<Message>(MessageTypeId);
+const isMessage = MFunction.isOfId<Message>(MessageTypeId);
 
 /**
  * Constructors
  */
-export const Message = MFunction.makeWithId<Message>(MessageTypeId);
+const Message = MFunction.makeWithId<Message>(MessageTypeId);
 
-export const $ = (title: string): Message =>
+const titleMessage = (title: string): Message =>
 	Message({
-		message: ANSI.yellow(title),
-		showDate: true,
-		skipMessageFormatting: true,
+		message: title,
+		importance: 'title',
 		object: Option.none(),
 		skipLineBefore: true,
-		skipLineAfter: false,
-		messageKey: Option.none()
+		skipLineAfter: false
 	});
-export const _ = (text: string): Message =>
+const subTitleMessage = (text: string): Message =>
 	Message({
 		message: text,
-		showDate: false,
-		skipMessageFormatting: false,
+		importance: 'subTitle',
 		object: Option.none(),
 		skipLineBefore: false,
-		skipLineAfter: false,
-		messageKey: Option.none()
+		skipLineAfter: false
 	});
-export const _eol = (text: string): Message =>
+const subTitleMessageLineBreakAfter = (text: string): Message =>
 	Message({
 		message: text,
-		showDate: false,
-		skipMessageFormatting: false,
+		importance: 'subTitle',
 		object: Option.none(),
 		skipLineBefore: false,
-		skipLineAfter: true,
-		messageKey: Option.none()
+		skipLineAfter: true
 	});
-export const eol_ = (text: string): Message =>
+const subTitleMessageLineBreakBefore = (text: string): Message =>
 	Message({
 		message: text,
-		showDate: false,
-		skipMessageFormatting: false,
+		importance: 'subTitle',
 		object: Option.none(),
 		skipLineBefore: true,
-		skipLineAfter: false,
-		messageKey: Option.none()
-	});
-export const messageWithObject = (text: string, object: unknown): Message =>
-	Message({
-		message: text,
-		showDate: false,
-		skipMessageFormatting: false,
-		object: Option.some(object),
-		skipLineBefore: false,
-		skipLineAfter: false,
-		messageKey: Option.none()
-	});
-export const messageWithKey = (text: string, key: string): Message =>
-	Message({
-		message: text,
-		showDate: false,
-		skipMessageFormatting: false,
-		object: Option.none(),
-		skipLineBefore: false,
-		skipLineAfter: false,
-		messageKey: Option.some(key)
-	});
-export const skipLine = (): Message =>
-	Message({
-		message: '',
-		showDate: false,
-		skipMessageFormatting: true,
-		object: Option.none(),
-		skipLineBefore: false,
-		skipLineAfter: false,
-		messageKey: Option.none()
+		skipLineAfter: false
 	});
 
-let previousKey = Option.none<string>();
+/**
+ *
+ * Logging functions
+ */
 
-export const live = (stringify: (u: unknown) => string) =>
-	pipe(new Date().getTime(), (startTime) =>
-		Logger.replace(
-			Logger.defaultLogger,
-			Logger.make(({ date, fiberId, logLevel, message }) => {
-				try {
-					const isObjectMessage = isMessage(message);
-					const currentKey = isObjectMessage ? message.messageKey : Option.none<string>();
-					const skipMessage = Option.isSome(currentKey) && Equal.equals(currentKey, previousKey);
-					previousKey = skipMessage ? Option.none() : currentKey;
+export const infoTitle = (message: string): Effect.Effect<never, never, void> =>
+	Effect.logInfo(titleMessage(message));
+export const infoSubTitle = (message: string): Effect.Effect<never, never, void> =>
+	Effect.logInfo(subTitleMessage(message));
+export const infoEolSubTitle = (message: string): Effect.Effect<never, never, void> =>
+	Effect.logInfo(subTitleMessageLineBreakAfter(message));
+export const infoSubTitleEol = (message: string): Effect.Effect<never, never, void> =>
+	Effect.logInfo(subTitleMessageLineBreakBefore(message));
 
-					if (!skipMessage)
-						console.log(
-							(isObjectMessage && message.skipLineBefore ? '\n' : '') +
-								(isObjectMessage && !message.showDate
-									? ''
-									: (logLevel._tag === 'Error' || logLevel._tag === 'Fatal'
-											? ANSI.red
-											: logLevel._tag === 'Warning'
-											  ? ANSI.yellow
-											  : ANSI.green)(MFiberId.toJson(fiberId) + ` ${date.getTime() - startTime}ms `)) +
-								(isObjectMessage
-									? (message.message === ''
-											? '' // Don't show fiberId when skipping line
-											: (message.skipMessageFormatting ? identity : ANSI.gray)(
-													message.message + (!message.showDate ? '(' + MFiberId.toJson(fiberId) + ')' : '')
-											  )) +
-									  Option.match(message.object, {
-											onNone: () => '',
-											onSome: (u) => '\n' + ANSI.blue(stringify(u))
-									  }) +
-									  (message.skipLineAfter ? '\n' : '')
-									: typeof message === 'string'
-									  ? ': ' + ANSI.gray(message)
-									  : '\n' + ANSI.blue(stringify(message)))
-						);
-				} catch (e) {
-					console.log(ANSI.red(`Logging error\n${stringify(e)}`));
-				}
-			})
-		)
+export const debugTitle = (message: string): Effect.Effect<never, never, void> =>
+	Effect.logDebug(titleMessage(message));
+export const debugSubTitle = (message: string): Effect.Effect<never, never, void> =>
+	Effect.logDebug(subTitleMessage(message));
+export const debugEolSubTitle = (message: string): Effect.Effect<never, never, void> =>
+	Effect.logDebug(subTitleMessageLineBreakAfter(message));
+export const debugSubTitleEol = (message: string): Effect.Effect<never, never, void> =>
+	Effect.logDebug(subTitleMessageLineBreakBefore(message));
+
+export const live = (stringify: (u: unknown) => string, startTime: number) =>
+	Logger.replace(
+		Logger.defaultLogger,
+		Logger.make(({ date, fiberId, logLevel, message }) => {
+			const colorizeByLogLevel =
+				logLevel._tag === 'Error' || logLevel._tag === 'Fatal'
+					? ANSI.red
+					: logLevel._tag === 'Warning'
+						? ANSI.yellow
+						: ANSI.green;
+
+			const colorizeByImportance = (importance: Importance) => (importance === 'title' ? ANSI.yellow : ANSI.gray);
+
+			try {
+				const objectMessage = isMessage(message)
+					? message
+					: MFunction.isPrimitive(message) || MFunction.isFunction(message)
+						? Message({
+								message: String(message),
+								importance: 'normal',
+								object: Option.none(),
+								skipLineBefore: false,
+								skipLineAfter: false
+							})
+						: Message({
+								message: '',
+								importance: 'normal',
+								object: Option.some(message as MFunction.RecordOrArray),
+								skipLineBefore: false,
+								skipLineAfter: false
+							});
+
+				console.log(
+					(objectMessage.skipLineBefore ? '\n' : '') +
+						(objectMessage.message === ''
+							? ''
+							: (objectMessage.importance === 'subTitle'
+									? tabChar
+									: colorizeByLogLevel(`${date.getTime() - startTime}ms `)) +
+								colorizeByImportance(objectMessage.importance)(
+									objectMessage.message + ' (' + MFiberId.toJson(fiberId) + ')'
+								)) +
+						Option.match(objectMessage.object, {
+							onNone: () => '',
+							onSome: (u) =>
+								'\n' +
+								(objectMessage.importance === 'subTitle' ? StringUtils.tabify(tabChar) : Function.identity)(
+									ANSI.blue(stringify(u))
+								)
+						}) +
+						(objectMessage.skipLineAfter ? '\n' : '')
+				);
+			} catch (e) {
+				console.log(ANSI.red(`Logging error\n${stringify(e)}`));
+			}
+		})
 	);
