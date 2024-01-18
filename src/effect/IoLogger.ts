@@ -1,21 +1,21 @@
 import { MFiberId, MFunction } from '#mjljm/effect-lib/index';
 import { ANSI, StringUtils } from '@mjljm/js-lib';
-import { Effect, Function, Logger, Option } from 'effect';
+import { Effect, Logger, Option, String, pipe } from 'effect';
 
 const moduleTag = '@mjljm/effect-lib/effect/IoLogger/';
 
 const MessageTypeId: unique symbol = Symbol.for(moduleTag + 'MessageTypeId');
 type MessageTypeId = typeof MessageTypeId;
 
-type Importance = 'title' | 'subTitle' | 'normal';
-
 interface Message {
 	readonly [MessageTypeId]: MessageTypeId;
 	readonly message: string;
-	readonly importance: Importance;
-	readonly object: Option.Option<MFunction.RecordOrArray>;
+	readonly color: (m: string) => string;
+	readonly showTime: boolean;
+	readonly object: Option.Option<unknown>;
 	readonly skipLineBefore: boolean;
 	readonly skipLineAfter: boolean;
+	readonly indent: number; // Number of tabs
 }
 
 const tabChar = '  ';
@@ -32,34 +32,22 @@ const Message = MFunction.makeWithId<Message>(MessageTypeId);
 const titleMessage = (title: string): Message =>
 	Message({
 		message: title,
-		importance: 'title',
+		color: ANSI.yellow,
+		showTime: true,
 		object: Option.none(),
 		skipLineBefore: true,
-		skipLineAfter: false
+		skipLineAfter: false,
+		indent: 0
 	});
-const subTitleMessage = (text: string): Message =>
+const subTitleMessage = (text: string, indent: number, skipLineBefore: boolean, skipLineAfter: boolean): Message =>
 	Message({
 		message: text,
-		importance: 'subTitle',
+		color: ANSI.gray,
+		showTime: false,
 		object: Option.none(),
-		skipLineBefore: false,
-		skipLineAfter: false
-	});
-const subTitleMessageLineBreakAfter = (text: string): Message =>
-	Message({
-		message: text,
-		importance: 'subTitle',
-		object: Option.none(),
-		skipLineBefore: false,
-		skipLineAfter: true
-	});
-const subTitleMessageLineBreakBefore = (text: string): Message =>
-	Message({
-		message: text,
-		importance: 'subTitle',
-		object: Option.none(),
-		skipLineBefore: true,
-		skipLineAfter: false
+		skipLineBefore,
+		skipLineAfter,
+		indent
 	});
 
 /**
@@ -69,21 +57,21 @@ const subTitleMessageLineBreakBefore = (text: string): Message =>
 
 export const infoTitle = (message: string): Effect.Effect<never, never, void> =>
 	Effect.logInfo(titleMessage(message));
-export const infoSubTitle = (message: string): Effect.Effect<never, never, void> =>
-	Effect.logInfo(subTitleMessage(message));
-export const infoEolSubTitle = (message: string): Effect.Effect<never, never, void> =>
-	Effect.logInfo(subTitleMessageLineBreakAfter(message));
-export const infoSubTitleEol = (message: string): Effect.Effect<never, never, void> =>
-	Effect.logInfo(subTitleMessageLineBreakBefore(message));
+export const infoSubTitle = (message: string, indent = 1): Effect.Effect<never, never, void> =>
+	Effect.logInfo(subTitleMessage(message, indent, false, false));
+export const infoEolSubTitle = (message: string, indent = 1): Effect.Effect<never, never, void> =>
+	Effect.logInfo(subTitleMessage(message, indent, true, false));
+export const infoSubTitleEol = (message: string, indent = 1): Effect.Effect<never, never, void> =>
+	Effect.logInfo(subTitleMessage(message, indent, false, true));
 
 export const debugTitle = (message: string): Effect.Effect<never, never, void> =>
 	Effect.logDebug(titleMessage(message));
-export const debugSubTitle = (message: string): Effect.Effect<never, never, void> =>
-	Effect.logDebug(subTitleMessage(message));
-export const debugEolSubTitle = (message: string): Effect.Effect<never, never, void> =>
-	Effect.logDebug(subTitleMessageLineBreakAfter(message));
-export const debugSubTitleEol = (message: string): Effect.Effect<never, never, void> =>
-	Effect.logDebug(subTitleMessageLineBreakBefore(message));
+export const debugSubTitle = (message: string, indent = 1): Effect.Effect<never, never, void> =>
+	Effect.logDebug(subTitleMessage(message, indent, false, false));
+export const debugEolSubTitle = (message: string, indent = 1): Effect.Effect<never, never, void> =>
+	Effect.logDebug(subTitleMessage(message, indent, true, false));
+export const debugSubTitleEol = (message: string, indent = 1): Effect.Effect<never, never, void> =>
+	Effect.logDebug(subTitleMessage(message, indent, false, true));
 
 export const live = (stringify: (u: unknown) => string, startTime: number) =>
 	Logger.replace(
@@ -96,44 +84,40 @@ export const live = (stringify: (u: unknown) => string, startTime: number) =>
 						? ANSI.yellow
 						: ANSI.green;
 
-			const colorizeByImportance = (importance: Importance) => (importance === 'title' ? ANSI.yellow : ANSI.gray);
-
 			try {
 				const objectMessage = isMessage(message)
 					? message
-					: MFunction.isPrimitive(message) || MFunction.isFunction(message)
+					: MFunction.isString(message)
 						? Message({
-								message: String(message),
-								importance: 'normal',
+								message,
+								color: ANSI.gray,
+								showTime: true,
 								object: Option.none(),
 								skipLineBefore: false,
-								skipLineAfter: false
+								skipLineAfter: false,
+								indent: 0
 							})
 						: Message({
-								message: '',
-								importance: 'normal',
-								object: Option.some(message as MFunction.RecordOrArray),
+								message: 'The following error value was returned',
+								color: ANSI.gray,
+								showTime: true,
+								object: Option.some(message),
 								skipLineBefore: false,
-								skipLineAfter: false
+								skipLineAfter: false,
+								indent: 0
 							});
 
+				const tab = pipe(tabChar, String.repeat(objectMessage.indent));
 				console.log(
 					(objectMessage.skipLineBefore ? '\n' : '') +
 						(objectMessage.message === ''
 							? ''
-							: (objectMessage.importance === 'subTitle'
-									? tabChar
-									: colorizeByLogLevel(`${date.getTime() - startTime}ms `)) +
-								colorizeByImportance(objectMessage.importance)(
-									objectMessage.message + ' (' + MFiberId.toJson(fiberId) + ')'
-								)) +
+							: tab +
+								(objectMessage.showTime ? colorizeByLogLevel(`${date.getTime() - startTime}ms `) : '') +
+								objectMessage.color(objectMessage.message + ' (' + MFiberId.toJson(fiberId) + ')')) +
 						Option.match(objectMessage.object, {
 							onNone: () => '',
-							onSome: (u) =>
-								'\n' +
-								(objectMessage.importance === 'subTitle' ? StringUtils.tabify(tabChar) : Function.identity)(
-									ANSI.blue(stringify(u))
-								)
+							onSome: (u) => '\n' + StringUtils.tabify(tab)(objectMessage.color(stringify(u)))
 						}) +
 						(objectMessage.skipLineAfter ? '\n' : '')
 				);

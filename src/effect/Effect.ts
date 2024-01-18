@@ -14,11 +14,19 @@ export { type EffectPredicate as Predicate };
 export const clearAndLogAllCauses =
 	(thisProgramPath: TypedPath.RealAbsoluteFolderPath, stringify: (u: unknown) => string, tabChar: string) =>
 	<R, E extends MError.WithOriginalCause, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, never, A | void> =>
-		Effect.catchAllCause(self, (c) =>
-			pipe(c, MCause.toJson(thisProgramPath, stringify, tabChar), (errorText) =>
-				errorText === ''
-					? Effect.logInfo(ANSI.green('SCRIPT EXITED SUCCESSFULLY'))
-					: Effect.logError(ANSI.red('SCRIPT FAILED\n') + StringUtils.tabify(tabChar)(errorText))
+		pipe(
+			self,
+			Effect.catchAllCause((c) =>
+				pipe(c, MCause.toJson(thisProgramPath, stringify, tabChar), (errorText) =>
+					errorText === ''
+						? Effect.logInfo(ANSI.green('SCRIPT EXITED SUCCESSFULLY'))
+						: Effect.logError(ANSI.red('SCRIPT FAILED\n') + StringUtils.tabify(tabChar)(errorText))
+				)
+			),
+			Effect.catchAllDefect((defect) =>
+				Effect.logInfo(
+					ANSI.red('SCRIPT EXITED WITH UNEXPECTED ERROR:\n') + StringUtils.tabify(tabChar)(stringify(defect))
+				)
 			)
 		);
 

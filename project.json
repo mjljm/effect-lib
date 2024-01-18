@@ -1,5 +1,5 @@
 {
-	"type": "library",
+	"type": "npmPackage",
 	"version": "1.0.0",
 	"access": "restricted",
 	"description": "",

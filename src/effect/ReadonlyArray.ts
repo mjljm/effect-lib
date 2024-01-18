@@ -110,3 +110,12 @@ export const takeRightBut =
 	(n: number) =>
 	<A>(self: ReadonlyArray<A>): Array<A> =>
 		ReadonlyArray.takeRight(self, ReadonlyArray.length(self) - n);
+
+/**
+ * This function provides a safe way to read a value at a particular index from the end of a `ReadonlyArray`.
+
+ */
+export const getFromEnd =
+	(index: number) =>
+	<A>(self: ReadonlyArray<A>): Option.Option<A> =>
+		ReadonlyArray.get(self, self.length - 1 - index);
