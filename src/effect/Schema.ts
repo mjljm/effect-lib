@@ -1,30 +1,8 @@
-import { MError } from '#mjljm/effect-lib/index';
-import { AST, Schema } from '@effect/schema';
+import { Schema } from '@effect/schema';
 
 import { StringUtils } from '@mjljm/js-lib';
-import { Effect, Option, ReadonlyArray, String, pipe } from 'effect';
+import { Option, ReadonlyArray, String, pipe } from 'effect';
 import { DateTime } from 'luxon';
-
-export type CompiledParser<A> = (
-	i: unknown,
-	overrideoptions?: AST.ParseOptions
-) => Effect.Effect<never, MError.EffectSchema, A>;
-
-// Parsing
-export const makeCompiledParser = <_, A>(schema: Schema.Schema<_, A>): CompiledParser<A> => {
-	const compiledParser = Schema.parse(schema, {
-		errors: 'all',
-		onExcessProperty: 'error'
-	});
-	return (i, overrideoptions) =>
-		Effect.catchAll(
-			compiledParser(i, overrideoptions),
-			(e) =>
-				new MError.EffectSchema({
-					originalError: e
-				})
-		);
-};
 
 // New data types
 /**

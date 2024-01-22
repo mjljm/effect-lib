@@ -1,5 +1,5 @@
-import { EqValue } from '#mjljm/effect-lib/index';
-import { Equal, Equivalence, Function, MutableHashMap, MutableList, Option, Predicate, identity } from 'effect';
+import * as EqValue from '#mjljm/effect-lib/mydata/EqValue';
+import { Equal, Equivalence, Function, MutableHashMap, Option, Predicate, identity } from 'effect';
 
 //const moduleTag = '@mjljm/effect-lib/effect/Function/';
 
@@ -33,7 +33,7 @@ import { Equal, Equivalence, Function, MutableHashMap, MutableList, Option, Pred
 /**
  * Function that takes an initial state and runs it through a step until the result stops meeting the predicate (the predicate is executed at start of loop). The final state is returned. Exists in predicate and refinement version. DO NOT USE
  */
-export const whileDo: {
+/*export const whileDo: {
 	<A, B extends A>(
 		initial: A,
 		options: {
@@ -58,7 +58,7 @@ export const whileDo: {
 	let loop = initial;
 	while (options.predicate(loop)) loop = options.step(loop);
 	return loop;
-};
+};*/
 
 /**
  * Function that takes an initial state and, on the one hand, runs it through a body keeping each result and, on the other and, runs it through a step function until the result stops meeting the predicate. The array of all body results is returned. Exists in predicate and refinement version.
@@ -108,7 +108,7 @@ const whileDoAccumRecursiveInternal = <A, B>(
 /**
  * Function that takes an initial state and, on the one hand, runs it through a body keeping each result and, on the other and, runs it through a step function until the result stops meeting the predicate. The array of all body results is returned. Exists in predicate and refinement version. Same as loop but coded without recursion. DO NOT USE
  */
-export const whileDoAccum: {
+/*export const whileDoAccum: {
 	<A, B, C extends B>(
 		initial: B,
 		options: {
@@ -140,12 +140,12 @@ export const whileDoAccum: {
 		loop = options.step(loop);
 	}
 	return Array.from(result);
-};
+};*/
 
 /**
  * Function that takes an initial state and runs it through a step until the result stops meeting the predicate (the predicate is executed at start of loop). The final state is returned. Exists in predicate and refinement version. DO NOT USE
  */
-export const doWhile: {
+/*export const doWhile: {
 	<A, B extends A>(
 		initial: B,
 		options: {
@@ -172,12 +172,12 @@ export const doWhile: {
 		loop = options.step(loop);
 	} while (options.predicate(loop));
 	return loop;
-};
+};*/
 
 /**
  * Function that takes an initial state and, on the one hand, runs it through a body keeping each result and, on the other and, runs it through a step function until the result stops meeting the predicate. The array of all body results is returned. Exists in predicate and refinement version. DO NOT USE
  */
-export const doWhileAccum: {
+/*export const doWhileAccum: {
 	<A, B, C extends B>(
 		initial: C,
 		options: {
@@ -211,7 +211,7 @@ export const doWhileAccum: {
 		if (cont) MutableList.append(result, options.body(loop));
 	} while (cont);
 	return Array.from(result);
-};
+};*/
 
 /**
  * Function to memoize a function that takes an A and returns a B
@@ -369,4 +369,8 @@ export const isArray = <T>(arg: T): arg is ArrayType<T> => Array.isArray(arg);
 export const isRecordOrArray = (u: unknown): u is RecordOrArray => u !== null && typeof u === 'object';
 export const isUrl = (u: unknown): u is URL => u instanceof URL;
 export const isErrorish = (u: unknown): u is Errorish =>
-	u !== null && typeof u === 'object' && 'message' in u && typeof u.message === 'string';
+	u !== null &&
+	typeof u === 'object' &&
+	'message' in u &&
+	typeof u.message === 'string' &&
+	(!('stack' in u) || typeof u.stack === 'string');

@@ -1,4 +1,4 @@
-import { MError } from '#mjljm/effect-lib/index';
+import * as MError from '#mjljm/effect-lib/Error';
 import { Effect } from 'effect';
 
 /**

@@ -1,6 +1,5 @@
-import { MCause, MEffect, MError, Tree } from '#mjljm/effect-lib/index';
-import { ANSI, StringUtils, TypedPath } from '@mjljm/js-lib';
-import { Effect, Equal, Equivalence, HashSet, List, ReadonlyArray, pipe } from 'effect';
+import * as Tree from '#mjljm/effect-lib/mydata/Tree';
+import { Effect, Equal, Equivalence, HashSet, ReadonlyArray, pipe } from 'effect';
 import { Concurrency } from 'effect/Types';
 
 interface EffectPredicate<in Z, out R, out E> {
@@ -8,35 +7,14 @@ interface EffectPredicate<in Z, out R, out E> {
 }
 
 export { type EffectPredicate as Predicate };
-/**
- * Clears the error channel after logging all possible causes
- */
-export const clearAndLogAllCauses =
-	(thisProgramPath: TypedPath.RealAbsoluteFolderPath, stringify: (u: unknown) => string, tabChar: string) =>
-	<R, E extends MError.WithOriginalCause, A>(self: Effect.Effect<R, E, A>): Effect.Effect<R, never, A | void> =>
-		pipe(
-			self,
-			Effect.catchAllCause((c) =>
-				pipe(c, MCause.toJson(thisProgramPath, stringify, tabChar), (errorText) =>
-					errorText === ''
-						? Effect.logInfo(ANSI.green('SCRIPT EXITED SUCCESSFULLY'))
-						: Effect.logError(ANSI.red('SCRIPT FAILED\n') + StringUtils.tabify(tabChar)(errorText))
-				)
-			),
-			Effect.catchAllDefect((defect) =>
-				Effect.logInfo(
-					ANSI.red('SCRIPT EXITED WITH UNEXPECTED ERROR:\n') + StringUtils.tabify(tabChar)(stringify(defect))
-				)
-			)
-		);
 
 /**
  * Same as Effect.Iterable but both predicate and step are effectful. DO NOT USE
  */
-export const whileDo = <Z, R1, E1, R2, E2>(
+/*export const whileDo = <Z, R1, E1, R2, E2>(
 	initial: Z,
 	options: {
-		readonly predicate: MEffect.Predicate<Z, R1, E1>;
+		readonly predicate: EffectPredicate<Z, R1, E1>;
 		readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
 	}
 ): Effect.Effect<R1 | R2, E1 | E2, Z> =>
@@ -46,16 +24,16 @@ export const whileDo = <Z, R1, E1, R2, E2>(
 				? yield* _(whileDo(yield* _(options.step(initial)), options))
 				: initial;
 		})
-	);
+	);*/
 
 /**
  * Same as WhileDo but the first step is executed before the predicate - DO NOT USE
  */
-export const doWhile = <Z, R1, E1, R2, E2>(
+/*export const doWhile = <Z, R1, E1, R2, E2>(
 	initial: Z,
 	options: {
 		readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
-		readonly predicate: MEffect.Predicate<Z, R1, E1>;
+		readonly predicate: EffectPredicate<Z, R1, E1>;
 	}
 ): Effect.Effect<R1 | R2, E1 | E2, Z> =>
 	Effect.suspend(() =>
@@ -63,19 +41,18 @@ export const doWhile = <Z, R1, E1, R2, E2>(
 			const loop = yield* _(options.step(initial));
 			return (yield* _(options.predicate(loop))) ? yield* _(doWhile(loop, options)) : loop;
 		})
-	);
+	);*/
 
 /**
  * Same as Effect.loop but step, predicate and body are effectful - DO NOT USE
  */
 
-// @ts-expect-error Same error as in core-effect.ts
-export const whileDoAccum: {
+/*export const whileDoAccum: {
 	<Z, R1, E1, R2, E2, R3, E3, A>(
 		initial: Z,
 		options: {
 			readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
-			readonly predicate: MEffect.Predicate<Z, R1, E1>;
+			readonly predicate: EffectPredicate<Z, R1, E1>;
 			readonly body: (z: Z) => Effect.Effect<R3, E3, A>;
 			readonly discard?: false;
 		}
@@ -84,7 +61,7 @@ export const whileDoAccum: {
 		initial: Z,
 		options: {
 			readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
-			readonly while: MEffect.Predicate<Z, R1, E1>;
+			readonly while: EffectPredicate<Z, R1, E1>;
 			readonly body: (z: Z) => Effect.Effect<R3, E3, A>;
 			readonly discard: true;
 		}
@@ -93,7 +70,7 @@ export const whileDoAccum: {
 	initial: Z,
 	options: {
 		readonly step: (z: Z) => Effect.Effect<R2, E2, Z>;
-		readonly while: MEffect.Predicate<Z, R1, E1>;
+		readonly while: EffectPredicate<Z, R1, E1>;
 		readonly body: (z: Z) => Effect.Effect<R3, E3, A>;
 		readonly discard?: boolean;
 	}
@@ -104,7 +81,7 @@ export const whileDoAccum: {
 
 const loopInternal = <Z, R1, E1, R2, E2, R3, E3, A>(
 	initial: Z,
-	cont: MEffect.Predicate<Z, R1, E1>,
+	cont: EffectPredicate<Z, R1, E1>,
 	inc: (z: Z) => Effect.Effect<R2, E2, Z>,
 	body: (z: Z) => Effect.Effect<R3, E3, A>
 ): Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, List.List<A>> =>
@@ -118,7 +95,7 @@ const loopInternal = <Z, R1, E1, R2, E2, R3, E3, A>(
 
 const loopDiscard = <Z, R1, E1, R2, E2, R3, E3, A>(
 	initial: Z,
-	cont: MEffect.Predicate<Z, R1, E1>,
+	cont: EffectPredicate<Z, R1, E1>,
 	inc: (z: Z) => Effect.Effect<R2, E2, Z>,
 	body: (z: Z) => Effect.Effect<R3, E3, A>
 ): Effect.Effect<R1 | R2 | R3, E1 | E2 | E3, void> =>
@@ -129,33 +106,7 @@ const loopDiscard = <Z, R1, E1, R2, E2, R3, E3, A>(
 				yield* _(loopDiscard(yield* _(inc(initial)), cont, inc, body));
 			}
 		})
-	);
-
-/**
- * Same as Effect.cachedFunction but calls onRecalc if the result is recalculated and onExit just before exiting. Useful for debuuging
- */
-/*export const cachedFunctionWithLogging = <R, E, A, B>(
-	f: (a: A) => Effect.Effect<R, E, B>,
-	onRecalcOrExit: (a: A, b: B, event: 'onRecalc' | 'onExit') => Effect.Effect<never, never, void>,
-	eq?: Equivalence.Equivalence<A>
-): Effect.Effect<never, never, (a: A) => Effect.Effect<R, E, B>> =>
-	Effect.gen(function* (_) {
-		const functionWithLogging = (a: A) =>
-			Effect.gen(function* (_) {
-				const b = yield* _(f(a));
-				// log after calling f that might be asynchronous. Otherwise logging may happen long before f executes
-				yield* _(onRecalcOrExit(a, b, 'onRecalc'));
-				return b;
-			});
-		const cachedFunction = yield* _(Effect.cachedFunction(functionWithLogging, eq));
-		return (a: A) =>
-			Effect.gen(function* (_) {
-				const b = yield* _(cachedFunction(a));
-				// log after calling f that might be asynchronous. Otherwise logging may happen long before f executes
-				yield* _(onRecalcOrExit(a, b, 'onExit'));
-				return b;
-			});
-	});*/
+	);*/
 
 /**
  * Effectful unfoldTree

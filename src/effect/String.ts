@@ -1,5 +1,5 @@
-import { MError, MFunction } from '#mjljm/effect-lib/index';
-import { Either, Function, HashMap, MutableHashSet, Option, ReadonlyArray, String, identity, pipe } from 'effect';
+import * as MFunction from '#mjljm/effect-lib/effect/Function';
+import { Function, Option, ReadonlyArray, String, pipe } from 'effect';
 
 const moduleTag = '@mjljm/effect-lib/effect/String/';
 
@@ -23,9 +23,7 @@ export const searchWithPos =
 	(self: string): Option.Option<SearchResult> => {
 		if (typeof regexp === 'string') regexp = new RegExp(regexp, 'g');
 		if (!regexp.flags.includes('g'))
-			throw new MError.General({
-				message: `Function 'searchWithPos' of module '${moduleTag}' must be called with g flag set.`
-			});
+			throw new Error(`Function 'searchWithPos' of module '${moduleTag}' must be called with g flag set.`);
 		regexp.lastIndex = startIndex;
 		const matchArray = regexp.exec(self);
 		if (!matchArray) return Option.none();
@@ -48,9 +46,7 @@ export const searchAllWithPos =
 	(self: string): Array<SearchResult> => {
 		if (typeof regexp === 'string') regexp = new RegExp(regexp, 'g');
 		if (!regexp.flags.includes('g'))
-			throw new MError.General({
-				message: `Function 'searchAllWithPos' of module '${moduleTag}' must be called with g flag set.`
-			});
+			throw new Error(`Function 'searchAllWithPos' of module '${moduleTag}' must be called with g flag set.`);
 		return pipe(
 			ReadonlyArray.fromIterable(self.matchAll(regexp)),
 			ReadonlyArray.map((matchArr) => {
@@ -69,7 +65,7 @@ export const searchAllWithPos =
  * Same as search but returns the last matching pattern instead of the first. g flag MUST BE PROVIDED for regexp or this function won't work.
  */
 export const searchRightWithPos =
-	(regexp: RegExp) =>
+	(regexp: RegExp | string) =>
 	(self: string): Option.Option<SearchResult> =>
 		pipe(self, searchAllWithPos(regexp), ReadonlyArray.last);
 
@@ -90,7 +86,7 @@ export const takeLeftTo =
  * Looks from the right for the first substring of self that matches target and returns all characters after that substring. If no occurence is found, returns self. g flag MUST BE PROVIDED for regexp or this function won't work.
  */
 export const takeRightFrom =
-	(regexp: RegExp) =>
+	(regexp: RegExp | string) =>
 	(self: string): string =>
 		pipe(
 			self,
@@ -99,58 +95,6 @@ export const takeRightFrom =
 			Option.getOrElse(() => 0),
 			(pos) => String.slice(pos)(self)
 		);
-
-/**
- * If successful, returns a right containing copy of self where all words matching the target RegExp are replaced by the replacements provided in the ReplacementMap. Return a left if self contains a pattern matching the target RegExp not present in ReplacementMap. Also returns a left if checkAllUsed is set and some of the values in ReplacementMap were not used
- * @param target The RegExp that anglobes all the patterns to match. DON'T forget /g!!
- * @param replacementMap A map whose keys are the patterns to replace and the values the strings to replace them with
- * @param checkAllUsed If true, all values in ReplkacementMap must be used
- * @param self The template
- * @returns an Either
- */
-export const templater =
-	<
-		O extends {
-			readonly checkAllUsed: boolean;
-		}
-	>(
-		target: RegExp,
-		replacementMap: HashMap.HashMap<string, string>,
-		options?: O
-	) =>
-	(self: string): Either.Either<MError.General, string> => {
-		const foundSet = MutableHashSet.empty<string>();
-		let notFound = '';
-		const result = self.replace(target, (match) => {
-			if (notFound !== '') return '';
-			MutableHashSet.add(foundSet, match);
-			return pipe(
-				replacementMap,
-				HashMap.get(match),
-				Option.match({
-					onNone: () => ((notFound = match), ''),
-					onSome: identity
-				})
-			);
-		});
-		if (notFound !== '')
-			return Either.left(
-				new MError.General({
-					message: `Function String.templateAllUsedNoExtra: ${notFound} not found in replacementMap`
-				})
-			);
-		if (options && options.checkAllUsed && HashMap.size(replacementMap) !== MutableHashSet.size(foundSet))
-			return Either.left(
-				new MError.General({
-					message:
-						'Function String.templateAllUsedNoExtra: some replacements present in replacementMap were not used.\nReplacement map keys:\n' +
-						pipe(replacementMap, HashMap.keys, ReadonlyArray.join(',')) +
-						'\nKeys found in template:\n' +
-						pipe(foundSet, ReadonlyArray.join(','))
-				})
-			);
-		else return Either.right(result);
-	};
 
 /**
  * Returns a some of the result of calling the toString method on obj provided it defines one different from Object.prototype.toString. If toString is not defined or not overloaded, it returns a some of the result of calling the toJson function on obj provided it defines one. If toString and toJson are not defined, returns a none.
@@ -165,11 +109,12 @@ export const tryToStringToJson = (obj: MFunction.Record): Option.Option<string> 
 			} catch (e) {
 				return Option.none();
 			}
-		} else return Option.none();
+		}
+		return Option.none();
 	};
 	return pipe(
 		obj['toString'],
-		Option.liftPredicate((toString) => toString === Object.prototype.toString),
+		Option.liftPredicate((toString) => toString !== Object.prototype.toString),
 		Option.flatMap(safeApply),
 		Option.orElse(() => safeApply(obj['toJson']))
 	);
@@ -225,9 +170,7 @@ export const count =
 	(self: string): number => {
 		if (typeof regexp === 'string') regexp = new RegExp(regexp, 'g');
 		if (!regexp.flags.includes('g'))
-			throw new MError.General({
-				message: `Function 'count' of module '${moduleTag}' must be called with g flag set.`
-			});
+			throw new Error(`Function 'count' of module '${moduleTag}' must be called with g flag set.`);
 		return pipe(
 			self,
 			String.match(regexp),

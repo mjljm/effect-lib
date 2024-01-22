@@ -10,8 +10,8 @@
 		["luxon", "*"]
 	],
 	"peerDeps": [
-		["effect", "2.0.5"],
-		["@effect/schema", "0.60.1"],
-		["@effect/typeclass", "0.22.5"]
+		["effect", "2.1.2"],
+		["@effect/schema", "0.60.6"],
+		["@effect/typeclass", "0.22.8"]
 	]
 }

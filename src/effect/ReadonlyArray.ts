@@ -1,4 +1,4 @@
-import { Either, Function, Option, Predicate, ReadonlyArray, Tuple, pipe } from 'effect';
+import { Either, Equal, Function, Option, Predicate, ReadonlyArray, Tuple, pipe } from 'effect';
 import { NoInfer } from 'effect/Types';
 
 /**
@@ -113,9 +113,18 @@ export const takeRightBut =
 
 /**
  * This function provides a safe way to read a value at a particular index from the end of a `ReadonlyArray`.
-
  */
 export const getFromEnd =
 	(index: number) =>
 	<A>(self: ReadonlyArray<A>): Option.Option<A> =>
 		ReadonlyArray.get(self, self.length - 1 - index);
+
+export const longestCommonSubArray =
+	<A>(that: ReadonlyArray<A>) =>
+	(self: ReadonlyArray<A>): Array<A> =>
+		pipe(
+			self,
+			ReadonlyArray.zip(that),
+			ReadonlyArray.takeWhile(([a1, a2]) => Equal.equals(a1, a2)),
+			ReadonlyArray.map(([a]) => a)
+		);
