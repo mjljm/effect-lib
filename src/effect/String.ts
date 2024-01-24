@@ -178,3 +178,11 @@ export const count =
 			Option.getOrElse(() => 0)
 		);
 	};
+
+/**
+ * Adds a at the start of self
+ */
+export const prepend =
+	(s: string) =>
+	(self: string): string =>
+		s + self;

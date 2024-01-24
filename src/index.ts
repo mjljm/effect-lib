@@ -2,7 +2,6 @@ export * as MError from '#mjljm/effect-lib/Error';
 export * as MChunk from '#mjljm/effect-lib/effect/Chunk';
 export * as MEffect from '#mjljm/effect-lib/effect/Effect';
 export * as MEither from '#mjljm/effect-lib/effect/Either';
-export * as MFiberId from '#mjljm/effect-lib/effect/FiberId';
 export * as MFunction from '#mjljm/effect-lib/effect/Function';
 export * as MMatch from '#mjljm/effect-lib/effect/Match';
 export * as MOption from '#mjljm/effect-lib/effect/Option';
