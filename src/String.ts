@@ -1,4 +1,4 @@
-import * as MFunction from '#mjljm/effect-lib/effect/Function';
+import * as MFunction from '#mjljm/effect-lib/Function';
 import { Function, Option, ReadonlyArray, String, pipe } from 'effect';
 
 const moduleTag = '@mjljm/effect-lib/effect/String/';

@@ -1,4 +1,4 @@
-import * as Tree from '#mjljm/effect-lib/mydata/Tree';
+import * as Tree from '#mjljm/effect-lib/Tree';
 import { Effect, Equal, Equivalence, HashSet, ReadonlyArray, pipe } from 'effect';
 import { Concurrency } from 'effect/Types';
 

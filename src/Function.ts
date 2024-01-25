@@ -1,7 +1,7 @@
-import * as EqValue from '#mjljm/effect-lib/mydata/EqValue';
+import * as EqValue from '#mjljm/effect-lib/EqValue';
 import { Equal, Equivalence, Function, MutableHashMap, Option, Predicate, identity } from 'effect';
 
-//const moduleTag = '@mjljm/effect-lib/effect/Function/';
+//const moduleTag = '@mjljm/effect-lib/Function/';
 
 /**
  * Function that takes an initial state and runs it through a step until the result stops meeting the while condition (while condition is executed at start of loop). The final state is returned. Exists in predicate and refinement version.
