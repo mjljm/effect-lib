@@ -12,12 +12,3 @@ export class FunctionPort extends Data.TaggedError('FunctionPort')<{
 }> {}
 
 export const isFunctionPort = (u: unknown): u is FunctionPort => u instanceof FunctionPort;
-
-/**
- * This error is meant to be handled by a human being (no action triggered like a retry on HTTP Error). The message must give sufficient context to help identify the origin the error
- */
-export class General extends Data.TaggedError('General')<{
-	readonly message: string;
-}> {}
-
-export const isGeneral = (u: unknown): u is General => u instanceof General;

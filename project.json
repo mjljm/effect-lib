@@ -4,12 +4,8 @@
 	"access": "restricted",
 	"description": "",
 	"scripts": [],
-	"devDeps": [["@types/luxon", "*"]],
 	"deps": [
 		["@mjljm/js-lib", "workspace:*"],
-		["luxon", "*"]
-	],
-	"peerDeps": [
 		["effect", "2.1.2"],
 		["@effect/schema", "0.60.6"],
 		["@effect/typeclass", "0.22.8"]

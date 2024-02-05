@@ -1,4 +1,4 @@
-import * as EqValue from '#mjljm/effect-lib/EqValue';
+import { MEqValue } from '#mjljm/effect-lib/index';
 import { Equal, Equivalence, Function, MutableHashMap, Option, Predicate, identity } from 'effect';
 
 //const moduleTag = '@mjljm/effect-lib/Function/';
@@ -219,16 +219,16 @@ const whileDoAccumRecursiveInternal = <A, B>(
 export const memoize = <A, B>(f: (a: A) => B, Eq?: Equivalence.Equivalence<A>): ((a: A) => B) => {
 	type CachedF = {
 		(a: A): B;
-		cache: MutableHashMap.MutableHashMap<EqValue.Type<A>, B>;
+		cache: MutableHashMap.MutableHashMap<MEqValue.Type<A>, B>;
 	};
 
 	const cachedF = Function.unsafeCoerce<unknown, CachedF>((a: A) => {
-		const eqValueA = EqValue.make({ value: a, Eq });
-		const cachedA = MutableHashMap.get(cachedF.cache, eqValueA);
+		const A = MEqValue.make({ value: a, Eq });
+		const cachedA = MutableHashMap.get(cachedF.cache, A);
 		if (Option.isSome(cachedA)) return cachedA.value;
 		else {
 			const result = f(a);
-			MutableHashMap.set(cachedF.cache, eqValueA, result);
+			MutableHashMap.set(cachedF.cache, A, result);
 			return result;
 		}
 	});
@@ -354,6 +354,7 @@ export const isBoolean = Predicate.isBoolean;
 export const isSymbol = Predicate.isSymbol;
 export const isUndefined = Predicate.isUndefined;
 export const isNull = Predicate.isNull;
+export const isNotNull = Predicate.isNotNull;
 export const isFunction = (u: unknown): u is AnyFunction => typeof u === 'function';
 // Warning : isObjectRecord lets class instances through although thet don't satisfy ObjectRecord
 // But class instances do behave like ObjectRecords. So should be safe

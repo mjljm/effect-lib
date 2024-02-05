@@ -1,4 +1,4 @@
-import * as Tree from '#mjljm/effect-lib/Tree';
+import * as MTree from '#mjljm/effect-lib/Tree';
 import { Effect, Equal, Equivalence, HashSet, ReadonlyArray, pipe } from 'effect';
 import { Concurrency } from 'effect/Types';
 
@@ -132,7 +132,7 @@ export const unfoldTree = <R, E, A, B>({
 	) => Effect.Effect<R, E, [nextValue: A, nextSeeds: ReadonlyArray<B>]>;
 	readonly memoize: boolean;
 	readonly seed: B;
-}): Effect.Effect<R, E, Tree.Tree<A>> =>
+}): Effect.Effect<R, E, MTree.Tree<A>> =>
 	Effect.gen(function* (_) {
 		const internalUnfoldTree = ({
 			currentSeed,
@@ -140,7 +140,7 @@ export const unfoldTree = <R, E, A, B>({
 		}: {
 			readonly currentSeed: B;
 			readonly parents: HashSet.HashSet<B>;
-		}): Effect.Effect<R, E, Tree.Tree<A>> =>
+		}): Effect.Effect<R, E, MTree.Tree<A>> =>
 			Effect.gen(function* (_) {
 				const [nextValue, nextSeeds] = yield* _(unfoldfunction(currentSeed, HashSet.has(parents, currentSeed)));
 				const forest = yield* _(
