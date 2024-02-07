@@ -99,7 +99,7 @@ export const unfold = <B, A>({
 		? MFunction.memoize(
 				internalUnfold,
 				Equivalence.make((self, that) => Equal.equals(self.currentSeed, that.currentSeed))
-		  )
+			)
 		: internalUnfold;
 
 	return cachedInternalUnfold({ currentSeed: seed, parents: HashSet.empty<B>() });

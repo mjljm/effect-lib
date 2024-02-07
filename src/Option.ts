@@ -15,7 +15,8 @@ export const noneAsConst = <A>(): Option.None<A> => Option.none() as Option.None
  *
  * @category conversions
  */
-export const fromString = (s: string): Option.Option<string> => (String.isEmpty(s) ? Option.none() : Option.some(s));
+export const fromString = (s: string): Option.Option<string> =>
+	String.isEmpty(s) ? Option.none() : Option.some(s);
 
 /**
  * Semigroup for options that returns a some only if there is one and one only some

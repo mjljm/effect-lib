@@ -4,13 +4,13 @@
 		// This path definition allows auto-import in VSCode with
 		// "typescript.preferences.importModuleSpecifier": "non-relative",
 		"paths": {
-			"#mjljm/effect-lib/*": ["./src/*.ts"]
+			"#mjljm/effect-lib/*": ["./src/*.ts"],
 		},
 		"plugins": [
 			{
-				"name": "@effect/language-service"
-			}
-		]
+				"name": "@effect/language-service",
+			},
+		],
 	},
-	"include": ["src", ".*", "*"]
+	"include": ["src", ".*", "*", "../effect-date/src/Date.ts"],
 }

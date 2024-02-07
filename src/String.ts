@@ -1,6 +1,6 @@
 import * as MFunction from '#mjljm/effect-lib/Function';
 import { RegExpUtils } from '@mjljm/js-lib';
-import { Function, HashMap, Option, ReadonlyArray, String, Tuple, pipe } from 'effect';
+import { Function, HashMap, Option, Order, ReadonlyArray, String, Tuple, pipe } from 'effect';
 
 const moduleTag = '@mjljm/effect-lib/effect/String/';
 
@@ -202,7 +202,15 @@ export const replaceMulti = <Pattern extends string>(
 	map: HashMap.HashMap<Pattern, string>
 ): ((self: string) => [modified: string, matchList: Array<Pattern>]) => {
 	const searchPattern = new RegExp(
-		pipe(map, HashMap.keys, ReadonlyArray.fromIterable, (arr) => RegExpUtils.either(...arr), RegExpUtils.capture),
+		pipe(
+			map,
+			HashMap.keys,
+			ReadonlyArray.fromIterable,
+			// We sort the patterns in reverse order so smaller patterns match after larger ones in which they may be included.
+			ReadonlyArray.sort(Order.reverse(Order.string)),
+			(arr) => RegExpUtils.either(...arr),
+			RegExpUtils.capture
+		),
 		'g'
 	);
 	return (self: string) => {

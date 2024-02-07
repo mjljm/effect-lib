@@ -1,52 +1,72 @@
-import { ParseResult, Schema } from '@effect/schema';
+import { ArrayFormatter, ParseResult, Schema } from '@effect/schema';
 import { RegExpUtils } from '@mjljm/js-lib';
 
-import { Effect, Either, ReadonlyArray, pipe } from 'effect';
+import { Brand, Effect, Either, ReadonlyArray, pipe } from 'effect';
 
 const moduleTag = '@mjljm/effect-lib/Schema/';
+
+// Error pretty printing
+export const prettyPrintError = (e: ParseResult.ParseError, eol: string, tabChar: string): string =>
+	pipe(
+		ArrayFormatter.formatError(e),
+		ReadonlyArray.map(
+			(issue) =>
+				tabChar +
+				issue.message +
+				' at path "' +
+				pipe(
+					issue.path,
+					ReadonlyArray.map((p) => p.toString()),
+					ReadonlyArray.join('/')
+				) +
+				'"'
+		),
+		ReadonlyArray.join(eol)
+	);
 
 // New data types
 
 const semVerPattern = new RegExp(
 	RegExpUtils.makeLine(
-		RegExpUtils.number + RegExpUtils.dot + RegExpUtils.number + RegExpUtils.dot + RegExpUtils.number
+		RegExpUtils.positiveInteger +
+			RegExpUtils.dot +
+			RegExpUtils.positiveInteger +
+			RegExpUtils.dot +
+			RegExpUtils.positiveInteger
 	)
 );
-
-const SemVerBrand = Symbol.for(moduleTag + 'SemverBrand');
-export const semVer = pipe(
+const SemVerBrand = `${moduleTag}SemVer`;
+type SemVerBrand = typeof SemVerBrand;
+export type SemVer = Brand.Branded<string, SemVerBrand>;
+export const SemVer: Schema.BrandSchema<never, string, SemVer> = pipe(
 	Schema.string,
 	Schema.pattern(semVerPattern, {
 		message: () => 'SemVer should have following format: number.number.number'
 	}),
 	Schema.brand(SemVerBrand)
 );
-export type SemVer = Schema.Schema.To<typeof semVer>;
-export const SemVer = Schema.decode(semVer);
 
 const emailPattern = /[a-z0-9]+@[a-z]+\.[a-z]{2,3}/;
-const EmailBrand = Symbol.for(moduleTag + 'EmailBrand');
-export const email = pipe(
+const EmailBrand = `${moduleTag}Email`;
+type EmailBrand = typeof EmailBrand;
+export type Email = Brand.Branded<string, EmailBrand>;
+export const Email: Schema.BrandSchema<never, string, Email> = pipe(
 	Schema.string,
 	Schema.pattern(emailPattern, {
 		message: () => 'Not a proper email'
 	}),
 	Schema.brand(EmailBrand)
 );
-export type Email = Schema.Schema.To<typeof email>;
-export const Email = Schema.decode(email);
 
-const TwoDigitIntBrand = Symbol.for(moduleTag + 'TwoDigitIntBrand');
-export const twoDigitInt = pipe(
-	Schema.number,
-	Schema.greaterThanOrEqualTo(0, { identifier: 'twoDigitInt.min' }),
-	Schema.lessThan(100, { identifier: 'twoDigitInt.max' }),
+const TwoDigitIntBrand = `${moduleTag}TwoDigitInt`;
+type TwoDigitIntBrand = typeof TwoDigitIntBrand;
+export type TwoDigitInt = Brand.Branded<number, TwoDigitIntBrand>;
+export const TwoDigitInt: Schema.BrandSchema<never, number, TwoDigitInt> = Schema.number.pipe(
+	Schema.clamp(0, 100),
 	Schema.brand(TwoDigitIntBrand)
 );
-export type TwoDigitInt = Schema.Schema.To<typeof twoDigitInt>;
-export const TwoDigitInt = Schema.decode(twoDigitInt);
-export const twoDigitIntFromString = Schema.compose(Schema.NumberFromString, twoDigitInt);
-export const TwoDigitIntFromString = Schema.decode(twoDigitIntFromString);
+
+export const twoDigitIntFromString = Schema.compose(Schema.NumberFromString, TwoDigitInt);
 
 // Number transformations
 /**

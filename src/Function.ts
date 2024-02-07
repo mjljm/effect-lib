@@ -214,27 +214,33 @@ const whileDoAccumRecursiveInternal = <A, B>(
 };*/
 
 /**
+ * Function to memoize a function that takes no argument. Useful to lazy initialize constants
+ */
+
+export const once = <A>(f: Function.LazyArg<A>): Function.LazyArg<A> => {
+	let store: A | undefined;
+	const cached: Function.LazyArg<A> = () => {
+		if (!store) store = f();
+		return store;
+	};
+	return cached;
+};
+
+/**
  * Function to memoize a function that takes an A and returns a B
  */
-export const memoize = <A, B>(f: (a: A) => B, Eq?: Equivalence.Equivalence<A>): ((a: A) => B) => {
-	type CachedF = {
-		(a: A): B;
-		cache: MutableHashMap.MutableHashMap<MEqValue.Type<A>, B>;
-	};
-
-	const cachedF = Function.unsafeCoerce<unknown, CachedF>((a: A) => {
-		const A = MEqValue.make({ value: a, Eq });
-		const cachedA = MutableHashMap.get(cachedF.cache, A);
-		if (Option.isSome(cachedA)) return cachedA.value;
-		else {
+export const memoize = <A, B>(f: OneArgFunction<A, B>, Eq?: Equivalence.Equivalence<A>): OneArgFunction<A, B> => {
+	let store: MutableHashMap.MutableHashMap<MEqValue.Type<A>, B>;
+	const cached: OneArgFunction<A, B> = (a: A) => {
+		const eqA = MEqValue.make({ value: a, Eq });
+		const cachedA = MutableHashMap.get(store, eqA);
+		return Option.getOrElse(cachedA, () => {
 			const result = f(a);
-			MutableHashMap.set(cachedF.cache, A, result);
+			MutableHashMap.set(store, eqA, result);
 			return result;
-		}
-	});
-
-	cachedF.cache = MutableHashMap.empty();
-	return cachedF;
+		});
+	};
+	return cached;
 };
 
 /**
@@ -330,6 +336,11 @@ export type Primitive = string | number | bigint | boolean | symbol | undefined 
  */
 type AnyFunction = (...a: ReadonlyArray<never>) => unknown;
 export { type AnyFunction as Function };
+
+/**
+ * Type qui représente une fonction avec un argument
+ */
+export type OneArgFunction<A, B> = (a: A) => B;
 
 /**
  * Type qui représente n'importe quelle valeur
