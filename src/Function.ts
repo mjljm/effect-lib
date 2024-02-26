@@ -1,5 +1,5 @@
 import { MEqValue } from '#mjljm/effect-lib/index';
-import { Equal, Equivalence, Function, MutableHashMap, Option, Predicate, identity } from 'effect';
+import { Equal, Equivalence, Function, MutableHashMap, MutableQueue, Option, Predicate, identity } from 'effect';
 
 //const moduleTag = '@mjljm/effect-lib/Function/';
 
@@ -218,10 +218,13 @@ const whileDoAccumRecursiveInternal = <A, B>(
  */
 
 export const once = <A>(f: Function.LazyArg<A>): Function.LazyArg<A> => {
-	let store: A | undefined;
+	let store: Option.Option<A>;
 	const cached: Function.LazyArg<A> = () => {
-		if (!store) store = f();
-		return store;
+		if (Option.isNone(store)) {
+			const result = f();
+			store = Option.some(result);
+			return result;
+		} else return store.value;
 	};
 	return cached;
 };
@@ -229,19 +232,26 @@ export const once = <A>(f: Function.LazyArg<A>): Function.LazyArg<A> => {
 /**
  * Function to memoize a function that takes an A and returns a B
  */
-export const memoize = <A, B>(f: OneArgFunction<A, B>, Eq?: Equivalence.Equivalence<A>): OneArgFunction<A, B> => {
-	let store: MutableHashMap.MutableHashMap<MEqValue.Type<A>, B>;
-	const cached: OneArgFunction<A, B> = (a: A) => {
-		const eqA = MEqValue.make({ value: a, Eq });
-		const cachedA = MutableHashMap.get(store, eqA);
-		return Option.getOrElse(cachedA, () => {
-			const result = f(a);
-			MutableHashMap.set(store, eqA, result);
-			return result;
-		});
+export const memoize =
+	(capacity: number) =>
+	<A, B>(f: OneArgFunction<A, B>, Eq?: Equivalence.Equivalence<A>): OneArgFunction<A, B> => {
+		const store = MutableHashMap.empty<MEqValue.Type<A>, B>();
+		const keyOrder = MutableQueue.unbounded<MEqValue.Type<A>>();
+		const cached: OneArgFunction<A, B> = (a: A) => {
+			const eqA = MEqValue.make({ value: a, Eq });
+			const cachedA = MutableHashMap.get(store, eqA);
+			return Option.getOrElse(cachedA, () => {
+				const result = f(a);
+				MutableHashMap.set(store, eqA, result);
+				MutableQueue.offer(keyOrder, eqA);
+				if (MutableQueue.length(keyOrder) > capacity) {
+					MutableHashMap.remove(MutableQueue.poll(keyOrder, MutableQueue.EmptyMutableQueue));
+				}
+				return result;
+			});
+		};
+		return capacity > 0 ? cached : f;
 	};
-	return cached;
-};
 
 /**
  * Constructor for objects that require no Id and no equal operator

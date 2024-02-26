@@ -3,7 +3,7 @@ import { Monoid } from '@effect/typeclass';
 import { Equal, Equivalence, Function, HashSet, ReadonlyArray, pipe } from 'effect';
 import { NoInfer } from 'effect/Types';
 
-//const moduleTag = '@mjljm/effect-lib/mydata/Tree/';
+//const moduleTag = '@mjljm/effect-lib/Tree/';
 
 /**
  * @category model
@@ -66,13 +66,7 @@ export const unfold = <B, A>({
 	readonly memoize: boolean;
 	readonly seed: B;
 }): Tree<A> => {
-	const internalUnfold = ({
-		currentSeed,
-		parents
-	}: {
-		readonly currentSeed: B;
-		readonly parents: HashSet.HashSet<B>;
-	}): Tree<A> =>
+	const InternalUnfold = ({ currentSeed, parents }: internalUnfoldParam): Tree<A> =>
 		pipe(
 			unfoldfunction(
 				/*console.log(
@@ -94,9 +88,9 @@ export const unfold = <B, A>({
 			})
 		);
 
-	// The cache is destroyed with this object. So its is necessarily cleaned on function exit even if it throws
+	// The cache is destroyed with this object. So it is necessarily cleaned on function exit even if it throws
 	const cachedInternalUnfold = memoize
-		? MFunction.memoize(
+		? MFunction.memoize(Infinity)(
 				internalUnfold,
 				Equivalence.make((self, that) => Equal.equals(self.currentSeed, that.currentSeed))
 			)

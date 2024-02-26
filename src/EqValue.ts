@@ -1,7 +1,5 @@
 import { Equal, Equivalence, Hash } from 'effect';
 
-//const moduleTag = '@mjljm/effect-lib/mydata/EqValue/';
-
 /**
  * MODEL
  * Container used to overload the equal property of an object. TO BE USED ONLY WITH COLLECTIONS BECAUSE AN EQUIVALENCE COMPARES ONLY ELEMENTS OF SAME TYPE
@@ -10,11 +8,6 @@ export interface Type<in out A> extends Equal.Equal {
 	readonly value: A;
 	readonly Eq?: Equivalence.Equivalence<A> | undefined;
 }
-
-/**
- * Type guard
- */
-//const isEqValue = (u: unknown): u is EqValue<unknown> => Predicate.hasProperty(u, TypeId);
 
 /**
  * Constructors

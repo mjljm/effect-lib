@@ -16,6 +16,12 @@ export interface SearchResult {
 const SearchResult = MFunction.make<SearchResult>;
 
 /**
+ * Constructor
+ */
+
+export const fromNumber = (n: number): string => n.toString();
+
+/**
  * Same as search but returns a SearchResult. You can optionnally provide the index from which to start searching. Throws if g flag is not set in the regexp.
  */
 
@@ -195,12 +201,13 @@ export const prepend =
 
 /**
  * Returns a tuple containing:
- * - a copy of self where all words which are keys of map have been replaced by the corresponding value in map
- * - an array of the matches in the order in which they were found
+ * - a copy of self where all substrings which are keys of map have been replaced by the result of applying f to the corresponding value in map
+ * - an array of the map entries in the order in which their keys were found
  */
-export const replaceMulti = <Pattern extends string>(
-	map: HashMap.HashMap<Pattern, string>
-): ((self: string) => [modified: string, matchList: Array<Pattern>]) => {
+export const replaceMulti = <Pattern extends string, A>(
+	map: HashMap.HashMap<Pattern, A>,
+	f: (a: A) => string
+): ((self: string) => [modified: string, matchList: Array<[Pattern, A]>]) => {
 	const searchPattern = new RegExp(
 		pipe(
 			map,
@@ -214,10 +221,11 @@ export const replaceMulti = <Pattern extends string>(
 		'g'
 	);
 	return (self: string) => {
-		const foundPatterns: Array<Pattern> = [];
+		const foundPatterns: Array<[Pattern, A]> = [];
 		const modified = self.replace(searchPattern, (match) => {
-			foundPatterns.push(match as Pattern);
-			return HashMap.unsafeGet(map, match);
+			const a = HashMap.unsafeGet(map, match);
+			foundPatterns.push(Tuple.make(match as Pattern, a));
+			return f(a);
 		});
 		return Tuple.make(modified, foundPatterns);
 	};

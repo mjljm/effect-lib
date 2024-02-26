@@ -1,3 +1,4 @@
+import * as MReadonlyArray from '#mjljm/effect-lib/ReadonlyArray';
 import { Option, String } from 'effect';
 
 /**
@@ -17,6 +18,13 @@ export const noneAsConst = <A>(): Option.None<A> => Option.none() as Option.None
  */
 export const fromString = (s: string): Option.Option<string> =>
 	String.isEmpty(s) ? Option.none() : Option.some(s);
+
+/**
+ * Converts an array into an `Option`. If the array contains a single element, returns this element wrapped in a `Some`, otherwise returns `None`.
+ *
+ * @category conversions
+ */
+export const fromSingleton = <A>(as: ReadonlyArray<A>): Option.Option<A> => MReadonlyArray.getSingleton(as);
 
 /**
  * Semigroup for options that returns a some only if there is one and one only some

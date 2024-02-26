@@ -66,7 +66,7 @@ export const findSingleton: {
 /**
  * Split an array A in two arrays [B,C], B containing all the elements at even indexes, C all elements at odd indexes
  */
-export const splitOddEvenIndexes = <A>(self: ReadonlyArray<A>): [Array<A>, Array<A>] =>
+export const splitOddEvenIndexes = <A>(self: Iterable<A>): [Array<A>, Array<A>] =>
 	ReadonlyArray.reduce(self, Tuple.make(ReadonlyArray.empty<A>(), ReadonlyArray.empty<A>()), ([even, odd], a) =>
 		even.length <= odd.length
 			? Tuple.make(ReadonlyArray.append(even, a), odd)
@@ -119,9 +119,12 @@ export const getFromEnd =
 	<A>(self: ReadonlyArray<A>): Option.Option<A> =>
 		ReadonlyArray.get(self, self.length - 1 - index);
 
+/**
+ * This function extracts the longest sub-array common to self and that starting at index 0
+ */
 export const longestCommonSubArray =
-	<A>(that: ReadonlyArray<A>) =>
-	(self: ReadonlyArray<A>): Array<A> =>
+	<A>(that: Iterable<A>) =>
+	(self: Iterable<A>): Array<A> =>
 		pipe(
 			self,
 			ReadonlyArray.zip(that),

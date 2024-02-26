@@ -1,7 +1,8 @@
+import { MReadonlyRecord } from '#mjljm/effect-lib/index';
 import { ArrayFormatter, ParseResult, Schema } from '@effect/schema';
 import { RegExpUtils } from '@mjljm/js-lib';
 
-import { Brand, Effect, Either, ReadonlyArray, pipe } from 'effect';
+import { Brand, Effect, Either, Function, ReadonlyArray, ReadonlyRecord, pipe } from 'effect';
 
 const moduleTag = '@mjljm/effect-lib/Schema/';
 
@@ -103,7 +104,7 @@ export const inverse = <R, I, A>(s: Schema.Schema<R, I, A>): Schema.Schema<R, A,
 	);
 
 /**
- * Transforms a Schema<R, I, A> in a Schema<R, I, number> using the provided array as. The number is the index of the A element is as
+ * Transforms a Schema<R, I, A> in a Schema<R, I, number> using the provided array as. The number is the index of the A element in as
  */
 export const index =
 	<A>(as: ReadonlyArray<A>) =>
@@ -124,6 +125,71 @@ export const index =
 					Either.fromOption(() => ParseResult.type(ast, n, 'Not an allowed value'))
 				)
 		);
+
+/**
+ * Transforms a schema representing a ReadonlyArray<[K,V]> into a schema representing a Record<K,V>. No error will be raised if there are several entries with the same key. The last occurence of each key will take precedence.
+ */
+export const entriesToRecord = <R1, R2, A2>(key: Schema.Schema<R1, string>, value: Schema.Schema<R2, A2>) =>
+	Schema.transform(
+		Schema.array(Schema.tuple(key, value)),
+		Schema.record(key, value),
+		ReadonlyRecord.fromEntries,
+		ReadonlyArray.fromRecord<string, A2>
+	);
+
+/**
+ * Transforms a schema representing a ReadonlyArray<[K,V]> into a schema representing a Record<K,V>. An error will be raised if there are conflicting entries (same key, different value). The error message will start by message followed by colon ':' then the first duplicate key found and its position.
+ */
+export const entriesToRecordOrFailWith = <R1, R2, A2>(
+	key: Schema.Schema<R1, string>,
+	value: Schema.Schema<R2, A2>,
+	message: string
+) =>
+	Schema.transformOrFail(
+		Schema.array(Schema.tuple(key, value)),
+		Schema.record(key, value),
+		(arr, _, ast) =>
+			pipe(
+				MReadonlyRecord.fromIterableWith(arr, Function.identity),
+				Either.mapLeft(([key, pos]) => ParseResult.type(ast, arr, `${message}: ${key} at position ${pos + 1}`))
+			),
+		(record) => pipe(record, ReadonlyArray.fromRecord<string, A2>, ParseResult.succeed)
+	);
+
+/**
+ * Transforms a schema of an array in a schema of an array in which duplicates have been removed
+ */
+export const arrayDedupeWith = <R1, A1>(
+	elem: Schema.Schema<R1, A1>,
+	isEquivalent: (self: A1, that: A1) => boolean
+) =>
+	Schema.transform(
+		Schema.array(elem),
+		Schema.array(elem),
+		ReadonlyArray.dedupeWith(isEquivalent),
+		Function.identity
+	);
+
+/**
+ * Puts the input schema into a struct under property 'a'. Use Schema.rename to change the name of the property
+ */
+export const structify = <R1, I1, A1>(
+	schema: Schema.Schema<R1, I1, A1>
+): Schema.Schema<
+	R1,
+	I1,
+	{
+		readonly a: A1;
+	}
+> =>
+	pipe(
+		schema,
+		Schema.transform(
+			Schema.struct({ a: Schema.to(schema) }),
+			(v) => ({ a: v }),
+			(v) => v.a
+		)
+	);
 
 /**
  * @category URL constructor

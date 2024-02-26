@@ -1,4 +1,4 @@
-import * as MError from '#mjljm/effect-lib/Error';
+import * as MErrors from '#mjljm/effect-lib/Errors';
 import { Effect } from 'effect';
 
 /**
@@ -16,7 +16,7 @@ export const stringify = (value: unknown, replacer?: Parameters<typeof JSON.stri
 	Effect.try({
 		try: () => JSON.stringify(value, replacer),
 		catch: (e) =>
-			new MError.FunctionPort({
+			new MErrors.FunctionPort({
 				originalError: e,
 				originalFunctionName: 'JSON.stringify',
 				moduleName: 'json.ts',
@@ -43,7 +43,7 @@ export const parse = (text: string, reviver?: Parameters<typeof JSON.parse>[1]) 
 	Effect.try({
 		try: () => JSON.parse(text, reviver) as unknown,
 		catch: (e) =>
-			new MError.FunctionPort({
+			new MErrors.FunctionPort({
 				originalError: e,
 				originalFunctionName: 'JSON.parse',
 				moduleName: 'json.ts',
