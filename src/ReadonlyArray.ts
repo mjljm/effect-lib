@@ -131,3 +131,23 @@ export const longestCommonSubArray =
 			ReadonlyArray.takeWhile(([a1, a2]) => Equal.equals(a1, a2)),
 			ReadonlyArray.map(([a]) => a)
 		);
+
+/**
+ * Extracts from an array the first item that matches the predicate. Returns the extracted item and the remaining items.
+ */
+export const extractFirst: {
+	<A, B extends A>(
+		refinement: (a: NoInfer<A>, i: number) => a is B
+	): (self: ReadonlyArray<A>) => [match: Option.Option<B>, remaining: Array<A>];
+	<A>(
+		predicate: (a: NoInfer<A>, i: number) => boolean
+	): (self: ReadonlyArray<A>) => [match: Option.Option<A>, remaining: Array<A>];
+} =
+	<A>(predicate: (a: NoInfer<A>, i: number) => boolean) =>
+	(self: ReadonlyArray<A>): [match: Option.Option<A>, remaining: Array<A>] =>
+		pipe(self, ReadonlyArray.splitWhere(predicate), ([beforeMatch, fromMatch]) =>
+			ReadonlyArray.matchLeft(fromMatch, {
+				onEmpty: () => Tuple.make(Option.none(), beforeMatch),
+				onNonEmpty: (head, tail) => Tuple.make(Option.some(head), ReadonlyArray.appendAll(beforeMatch, tail))
+			})
+		);

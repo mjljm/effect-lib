@@ -1,5 +1,15 @@
 import { MEqValue } from '#mjljm/effect-lib/index';
-import { Equal, Equivalence, Function, MutableHashMap, MutableQueue, Option, Predicate, identity } from 'effect';
+import {
+	Equal,
+	Equivalence,
+	Function,
+	MutableHashMap,
+	MutableQueue,
+	Option,
+	Predicate,
+	ReadonlyArray,
+	identity
+} from 'effect';
 
 //const moduleTag = '@mjljm/effect-lib/Function/';
 
@@ -307,13 +317,6 @@ export const iif: {
 		cond(a) ? options.onTrue(a) : options.onFalse(a);*/
 
 /**
- * Type qui transforme une union en intersection
- */
-/*export type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) extends (k: infer I) => void
-	? I
-	: never;*/
-
-/**
  * Type that expands a type
  */
 /*export type Develop<P> = P extends TypedPath<infer X, infer Y>
@@ -396,3 +399,6 @@ export const isErrorish = (u: unknown): u is Errorish =>
 	'message' in u &&
 	typeof u.message === 'string' &&
 	(!('stack' in u) || typeof u.stack === 'string');
+
+export const isArrayOfSomes = <T>(a: ReadonlyArray<Option.Option<T>>): a is ReadonlyArray<Option.Some<T>> =>
+	ReadonlyArray.getSomes(a).length === a.length;
