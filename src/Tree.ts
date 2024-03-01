@@ -1,4 +1,4 @@
-import { MFunction } from '#mjljm/effect-lib/index';
+import { MFunction, MReadonlyArray } from '#mjljm/effect-lib/index';
 import { Monoid } from '@effect/typeclass';
 import { Equal, Equivalence, Function, HashSet, ReadonlyArray, pipe } from 'effect';
 import { NoInfer } from 'effect/Types';
@@ -223,7 +223,7 @@ export const reduce =
 				let r: B = f(b, self.value, level);
 				const len = self.forest.length;
 				for (let i = 0; i < len; i++) {
-					r = pipe(self.forest, ReadonlyArray.unsafeGet(i), go(r, level + 1));
+					r = pipe(self.forest, MReadonlyArray.unsafeGet(i), go(r, level + 1));
 				}
 				return r;
 			};
@@ -255,7 +255,7 @@ export const reduceRight =
 				let r: B = f(b, self.value, level);
 				const len = self.forest.length;
 				for (let i = len - 1; i >= 0; i--) {
-					r = pipe(self.forest, ReadonlyArray.unsafeGet(i), go(r, level + 1));
+					r = pipe(self.forest, MReadonlyArray.unsafeGet(i), go(r, level + 1));
 				}
 				return r;
 			};

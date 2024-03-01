@@ -151,3 +151,9 @@ export const extractFirst: {
 				onNonEmpty: (head, tail) => Tuple.make(Option.some(head), ReadonlyArray.appendAll(beforeMatch, tail))
 			})
 		);
+
+export const unsafeGet =
+	(index: number) =>
+	<A>(self: ReadonlyArray<A>): A =>
+		// @ts-expect-error getting array content unsafely
+		self[index];

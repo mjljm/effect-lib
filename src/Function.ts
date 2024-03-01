@@ -228,7 +228,7 @@ const whileDoAccumRecursiveInternal = <A, B>(
  */
 
 export const once = <A>(f: Function.LazyArg<A>): Function.LazyArg<A> => {
-	let store: Option.Option<A>;
+	let store = Option.none<A>();
 	const cached: Function.LazyArg<A> = () => {
 		if (Option.isNone(store)) {
 			const result = f();
