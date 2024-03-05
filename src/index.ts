@@ -15,5 +15,4 @@ export * as MSchema from '#mjljm/effect-lib/Schema';
 export * as ScopeOnce from '#mjljm/effect-lib/ScopeOnce';
 export * as MStream from '#mjljm/effect-lib/Stream';
 export * as MString from '#mjljm/effect-lib/String';
-export * as MToday from '#mjljm/effect-lib/Today';
 export * as MTree from '#mjljm/effect-lib/Tree';

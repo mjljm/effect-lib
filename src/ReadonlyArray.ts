@@ -34,7 +34,7 @@ export const getSingleton = <A>(self: ReadonlyArray<A>): Option.Option<A> =>
  * */
 export const getSingletonOrFailsWith =
 	<B>(error: Function.LazyArg<B>) =>
-	<A>(self: ReadonlyArray<A>): Either.Either<B, Option.Option<A>> =>
+	<A>(self: ReadonlyArray<A>): Either.Either<Option.Option<A>, B> =>
 		self.length > 1 ? Either.left(error()) : Either.right(ReadonlyArray.get(self, 0));
 
 /**

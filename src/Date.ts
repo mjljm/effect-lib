@@ -52,7 +52,7 @@ const leapYearMsInMonth = [
 /**
  * Utilities
  */
-const yToMs = (y: number): Either.Either<string, [yearMs: number, isLeapYear: boolean]> =>
+const yToMs = (y: number): Either.Either<[yearMs: number, isLeapYear: boolean],string> =>
 	Either.gen(function* (_) {
 		if (y < -MAX_YEAR || y > MAX_YEAR)
 			yield* _(Either.left(`Actual: ${y}, expected: integer between ${-MAX_YEAR} and ${MAX_YEAR}`));

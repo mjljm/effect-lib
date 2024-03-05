@@ -23,7 +23,7 @@ export const getSingleton = <A>(self: Chunk.Chunk<A>): Option.Option<A> =>
  * */
 export const getSingletonOrFailsWith =
 	<B>(error: Function.LazyArg<B>) =>
-	<A>(self: Chunk.Chunk<A>): Either.Either<B, Option.Option<A>> =>
+	<A>(self: Chunk.Chunk<A>): Either.Either<Option.Option<A>, B> =>
 		self.length > 1 ? Either.left(error()) : Either.right(Chunk.get(self, 0));
 
 /**

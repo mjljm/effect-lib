@@ -66,7 +66,7 @@ export const unfold = <B, A>({
 	readonly memoize: boolean;
 	readonly seed: B;
 }): Tree<A> => {
-	const InternalUnfold = ({ currentSeed, parents }: internalUnfoldParam): Tree<A> =>
+	const internalUnfold = ({ currentSeed, parents }: { currentSeed: B; parents: HashSet.HashSet<B> }): Tree<A> =>
 		pipe(
 			unfoldfunction(
 				/*console.log(

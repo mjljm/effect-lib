@@ -1,10 +1,10 @@
 import { Cause, Either, Option, pipe } from 'effect';
 
-export const getRightWhenNoLeft = <A>(self: Either.Either<never, A>): A => (self as Either.Right<never, A>).right;
+export const getRightWhenNoLeft = <A>(self: Either.Either<A, never>): A => (self as Either.Right<never, A>).right;
 
-export const optionFromOptional = <E, A>(
-	self: Either.Either<E, A>
-): Either.Either<Exclude<E, Cause.NoSuchElementException>, Option.Option<A>> =>
+export const optionFromOptional = <A, E>(
+	self: Either.Either<A, E>
+): Either.Either<Option.Option<A>, Exclude<E, Cause.NoSuchElementException>> =>
 	pipe(
 		self,
 		Either.map(Option.some),

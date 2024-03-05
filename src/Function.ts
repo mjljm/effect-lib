@@ -1,4 +1,5 @@
 import { MEqValue } from '#mjljm/effect-lib/index';
+import { JsTypes } from '@mjljm/js-lib';
 import {
 	Equal,
 	Equivalence,
@@ -383,7 +384,7 @@ export const isFunction = (u: unknown): u is AnyFunction => typeof u === 'functi
 // Warning : isObjectRecord lets class instances through although thet don't satisfy ObjectRecord
 // But class instances do behave like ObjectRecords. So should be safe
 export const isRecord = Predicate.isRecord;
-
+export const isArray = <T>(arg: T): arg is JsTypes.ArrayType<T> => Array.isArray(arg);
 export const isRecordOrArray = (u: unknown): u is RecordOrArray => u !== null && typeof u === 'object';
 export const isUrl = (u: unknown): u is URL => u instanceof URL;
 export const isErrorish = (u: unknown): u is Errorish =>

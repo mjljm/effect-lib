@@ -1,12 +1,14 @@
 import { Context, Effect, Layer, Ref, Scope } from 'effect';
-
-//const moduleTag = '@mjljm/effect-lib/Once/';
+/**
+ * Same as scope but pnly one finalizer can be added. Any addition of a finalizer after the initial one will be ignored.
+ */
+const moduleTag = '@mjljm/effect-lib/Once/';
 
 export interface ServiceInterface {
-	readonly addFinalizer: (finalizer: Effect.Effect<never, never, unknown>) => Effect.Effect<never, never, void>;
+	readonly addFinalizer: (finalizer: Effect.Effect<unknown, never, never>) => Effect.Effect<void, never, never>;
 }
 
-export const Service = Context.Tag<ServiceInterface>();
+export class Service extends Context.Tag(moduleTag + 'Service')<Service, ServiceInterface>() {}
 
 export const layer = Layer.scoped(
 	Service,

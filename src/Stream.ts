@@ -6,13 +6,9 @@ export class StreamContentError extends Data.TaggedError('StreamContentError')<{
 
 export const ExtractNBytes =
 	(n: number) =>
-	<R, E>(
-		self: Stream.Stream<R, E, Uint8Array>
-	): Effect.Effect<
-		R,
-		E | StreamContentError,
-		[iv: Uint8Array, remainingStream: Stream.Stream<R, E, Uint8Array>]
-	> =>
+	<E>(
+		self: Stream.Stream<Uint8Array, E>
+	): Effect.Effect<[iv: Uint8Array, remainingStream: Stream.Stream<Uint8Array, E>], E | StreamContentError> =>
 		Effect.gen(function* (_) {
 			const ivConstituents = yield* _(
 				pipe(

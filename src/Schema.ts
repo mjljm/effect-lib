@@ -29,17 +29,13 @@ export const prettyPrintError = (e: ParseResult.ParseError, eol: string, tabChar
 
 const semVerPattern = new RegExp(
 	JsRegExp.makeLine(
-		JsRegExp.positiveInteger +
-			JsRegExp.dot +
-			JsRegExp.positiveInteger +
-			JsRegExp.dot +
-			JsRegExp.positiveInteger
+		JsRegExp.positiveInteger + JsRegExp.dot + JsRegExp.positiveInteger + JsRegExp.dot + JsRegExp.positiveInteger
 	)
 );
 const SemVerBrand = `${moduleTag}SemVer`;
 type SemVerBrand = typeof SemVerBrand;
 export type SemVer = Brand.Branded<string, SemVerBrand>;
-export const SemVer: Schema.BrandSchema<never, string, SemVer> = pipe(
+export const SemVer: Schema.BrandSchema<SemVer, string, never> = pipe(
 	Schema.string,
 	Schema.pattern(semVerPattern, {
 		message: () => 'SemVer should have following format: number.number.number'
@@ -51,7 +47,7 @@ const emailPattern = /[a-z0-9]+@[a-z]+\.[a-z]{2,3}/;
 const EmailBrand = `${moduleTag}Email`;
 type EmailBrand = typeof EmailBrand;
 export type Email = Brand.Branded<string, EmailBrand>;
-export const Email: Schema.BrandSchema<never, string, Email> = pipe(
+export const Email: Schema.BrandSchema<Email, string, never> = pipe(
 	Schema.string,
 	Schema.pattern(emailPattern, {
 		message: () => 'Not a proper email'
@@ -62,8 +58,8 @@ export const Email: Schema.BrandSchema<never, string, Email> = pipe(
 const TwoDigitIntBrand = `${moduleTag}TwoDigitInt`;
 type TwoDigitIntBrand = typeof TwoDigitIntBrand;
 export type TwoDigitInt = Brand.Branded<number, TwoDigitIntBrand>;
-export const TwoDigitInt: Schema.BrandSchema<never, number, TwoDigitInt> = Schema.number.pipe(
-	Schema.clamp(0, 100),
+export const TwoDigitInt: Schema.BrandSchema<TwoDigitInt, number, never> = Schema.number.pipe(
+	Schema.between(0, 100),
 	Schema.brand(TwoDigitIntBrand)
 );
 
@@ -73,7 +69,7 @@ export const twoDigitIntFromString = Schema.compose(Schema.NumberFromString, Two
 /**
  * Yields a schema that takes a number and returns that number offset by `offset`
  */
-export const offset = (offset: number): Schema.Schema<never, number, number> =>
+export const offset = (offset: number): Schema.Schema<number> =>
 	Schema.transform(
 		Schema.number,
 		Schema.number,
@@ -83,9 +79,9 @@ export const offset = (offset: number): Schema.Schema<never, number, number> =>
 
 // Schema transformations
 /**
- * Transforms a `Schema.Schema<R, I, A>` into a `Schema.Schema<R, A, I>`
+ * Transforms a `Schema.Schema<A,I,R>` into a `Schema.Schema<I,A,R>`
  */
-export const inverse = <R, I, A>(s: Schema.Schema<R, I, A>): Schema.Schema<R, A, I> =>
+export const inverse = <A, I, R>(s: Schema.Schema<A, I, R>): Schema.Schema<I, A, R> =>
 	Schema.transformOrFail(
 		Schema.to(s),
 		Schema.from(s),
@@ -104,11 +100,11 @@ export const inverse = <R, I, A>(s: Schema.Schema<R, I, A>): Schema.Schema<R, A,
 	);
 
 /**
- * Transforms a Schema<R, I, A> in a Schema<R, I, number> using the provided array as. The number is the index of the A element in as
+ * Transforms a Schema<A,I,R> in a Schema<number, I, R> using the provided array as. The number is the index of the A element in as
  */
 export const index =
 	<A>(as: ReadonlyArray<A>) =>
-	<R, I>(s: Schema.Schema<R, I, A>): Schema.Schema<R, I, number> =>
+	<I>(s: Schema.Schema<A, I>): Schema.Schema<number, I> =>
 		Schema.transformOrFail(
 			s,
 			Schema.number,
@@ -129,40 +125,58 @@ export const index =
 /**
  * Transforms a schema representing a ReadonlyArray<[K,V]> into a schema representing a Record<K,V>. No error will be raised if there are several entries with the same key. The last occurence of each key will take precedence.
  */
-export const entriesToRecord = <R1, R2, A2>(key: Schema.Schema<R1, string>, value: Schema.Schema<R2, A2>) =>
+export const entriesToRecord = <A, R1, R2>(
+	key: Schema.Schema<string, string, R1>,
+	value: Schema.Schema<A, A, R2>
+): Schema.Schema<
+	{
+		readonly [x: string]: A;
+	},
+	readonly (readonly [string, A])[],
+	R1 | R2
+> =>
 	Schema.transform(
 		Schema.array(Schema.tuple(key, value)),
 		Schema.record(key, value),
 		ReadonlyRecord.fromEntries,
-		ReadonlyArray.fromRecord<string, A2>
+		ReadonlyArray.fromRecord<string, A>
 	);
 
 /**
  * Transforms a schema representing a ReadonlyArray<[K,V]> into a schema representing a Record<K,V>. An error will be raised if there are conflicting entries (same key, different value). The error message will start by message followed by colon ':' then the first duplicate key found and its position.
  */
-export const entriesToRecordOrFailWith = <R1, R2, A2>(
-	key: Schema.Schema<R1, string>,
-	value: Schema.Schema<R2, A2>,
+export const entriesToRecordOrFailWith = <A, R1, R2>(
+	key: Schema.Schema<string, string, R1>,
+	value: Schema.Schema<A, A, R2>,
 	message: string
-) =>
+): Schema.Schema<
+	{
+		readonly [x: string]: A;
+	},
+	readonly (readonly [string, A])[],
+	R1 | R2
+> =>
 	Schema.transformOrFail(
 		Schema.array(Schema.tuple(key, value)),
 		Schema.record(key, value),
 		(arr, _, ast) =>
 			pipe(
-				MReadonlyRecord.fromIterableWith(arr, Function.identity),
-				Either.mapLeft(([key, pos]) => ParseResult.type(ast, arr, `${message}: ${key} at position ${pos + 1}`))
+				arr,
+				MReadonlyRecord.fromIterableWith(Function.identity),
+				Either.mapLeft(([key, pos]) =>
+					ParseResult.type(ast, arr, `${message}: ${String(key)} at position ${pos + 1}`)
+				)
 			),
-		(record) => pipe(record, ReadonlyArray.fromRecord<string, A2>, ParseResult.succeed)
+		(record) => pipe(record, ReadonlyArray.fromRecord<string, A>, ParseResult.succeed)
 	);
 
 /**
  * Transforms a schema of an array in a schema of an array in which duplicates have been removed
  */
-export const arrayDedupeWith = <R1, A1>(
-	elem: Schema.Schema<R1, A1>,
-	isEquivalent: (self: A1, that: A1) => boolean
-) =>
+export const arrayDedupeWith = <A, R>(
+	elem: Schema.Schema<A, A, R>,
+	isEquivalent: (self: A, that: A) => boolean
+): Schema.Schema<ReadonlyArray<A>, ReadonlyArray<A>, R> =>
 	Schema.transform(
 		Schema.array(elem),
 		Schema.array(elem),
@@ -173,14 +187,14 @@ export const arrayDedupeWith = <R1, A1>(
 /**
  * Puts the input schema into a struct under property 'a'. Use Schema.rename to change the name of the property
  */
-export const structify = <R1, I1, A1>(
-	schema: Schema.Schema<R1, I1, A1>
+export const structify = <A, I, R>(
+	schema: Schema.Schema<A, I, R>
 ): Schema.Schema<
-	R1,
-	I1,
 	{
-		readonly a: A1;
-	}
+		readonly a: A;
+	},
+	I,
+	R
 > =>
 	pipe(
 		schema,
