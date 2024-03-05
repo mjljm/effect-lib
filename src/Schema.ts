@@ -1,6 +1,6 @@
 import { MReadonlyRecord } from '#mjljm/effect-lib/index';
 import { ArrayFormatter, ParseResult, Schema } from '@effect/schema';
-import { RegExpUtils } from '@mjljm/js-lib';
+import { JsRegExp } from '@mjljm/js-lib';
 
 import { Brand, Effect, Either, Function, ReadonlyArray, ReadonlyRecord, pipe } from 'effect';
 
@@ -28,12 +28,12 @@ export const prettyPrintError = (e: ParseResult.ParseError, eol: string, tabChar
 // New data types
 
 const semVerPattern = new RegExp(
-	RegExpUtils.makeLine(
-		RegExpUtils.positiveInteger +
-			RegExpUtils.dot +
-			RegExpUtils.positiveInteger +
-			RegExpUtils.dot +
-			RegExpUtils.positiveInteger
+	JsRegExp.makeLine(
+		JsRegExp.positiveInteger +
+			JsRegExp.dot +
+			JsRegExp.positiveInteger +
+			JsRegExp.dot +
+			JsRegExp.positiveInteger
 	)
 );
 const SemVerBrand = `${moduleTag}SemVer`;
@@ -265,7 +265,7 @@ export const inArray = (a: ReadonlyArray<string>) =>
  *
  */
 /*export const schemaFromIsoToSchemaFromYyyymmdd = <T>(fromIso: Schema.Schema<string, T>) =>
-	Schema.transform(Schema.string, fromIso, StringUtils.yyyymmdToIso, StringUtils.isoToYyyymmdd);*/
+	Schema.transform(Schema.string, fromIso, JsString.yyyymmdToIso, JsString.isoToYyyymmdd);*/
 
 /**
  * Schema that takes a string 'YYYYMMDD' and returns a date.

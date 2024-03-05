@@ -1,5 +1,5 @@
 import * as MFunction from '#mjljm/effect-lib/Function';
-import { RegExpUtils } from '@mjljm/js-lib';
+import { JsRegExp } from '@mjljm/js-lib';
 import { Function, HashMap, Option, Order, ReadonlyArray, String, Tuple, pipe } from 'effect';
 
 const moduleTag = '@mjljm/effect-lib/effect/String/';
@@ -200,10 +200,14 @@ export const prepend =
 		s + self;
 
 /**
- * Returns a tuple containing:
- * - a copy of self where all substrings which are keys of map have been replaced by the result of applying f to the corresponding value in map
- * - an array of the map entries in the order in which their keys were found
- */
+ * Simple templating function.
+ * @param self template that contains tokens to replace
+ * @param map map that associates each token to a value A
+ * @param f function that projects an A on a string
+ * @param locale locale to use to parse the date. If omitted, system locale is used. The locale is used for tokens that output a string like `MMM`, `MMMM`, `EEE`, `EEEE`,...
+ * @returns A tuple containing a copy of self where all tokens have been replaced by their projection from the map and an array of the found tokens in the order in which they were found.
+ **/
+
 export const replaceMulti = <Pattern extends string, A>(
 	map: HashMap.HashMap<Pattern, A>,
 	f: (a: A) => string
@@ -215,8 +219,8 @@ export const replaceMulti = <Pattern extends string, A>(
 			ReadonlyArray.fromIterable,
 			// We sort the patterns in reverse order so smaller patterns match after larger ones in which they may be included.
 			ReadonlyArray.sort(Order.reverse(Order.string)),
-			(arr) => RegExpUtils.either(...arr),
-			RegExpUtils.capture
+			(arr) => JsRegExp.either(...arr),
+			JsRegExp.capture
 		),
 		'g'
 	);

@@ -1,4 +1,4 @@
-import { Either, Equal, Function, Option, Predicate, ReadonlyArray, Tuple, pipe } from 'effect';
+import { Either, Equal, Function, Option, Predicate, ReadonlyArray, ReadonlyRecord, Tuple, pipe } from 'effect';
 import { NoInfer } from 'effect/Types';
 
 /**
@@ -157,3 +157,18 @@ export const unsafeGet =
 	<A>(self: ReadonlyArray<A>): A =>
 		// @ts-expect-error getting array content unsafely
 		self[index];
+
+export const validateAll =
+	<E, A, B>(f: (a: A, i: number) => Either.Either<E, B>) =>
+	(self: ReadonlyArray<A>): Either.Either<Array<E>, Array<B>> =>
+		pipe(
+			self,
+			ReadonlyArray.partitionMap((a, i) => f(a, i)),
+			([lefts, rights]) =>
+				ReadonlyArray.match(lefts, { onEmpty: () => Either.right(rights), onNonEmpty: () => Either.left(lefts) })
+		);
+
+export const groupBy =
+	<A, B>(fKey: (a: A) => string, fValue: (a: A) => B) =>
+	(self: Iterable<A>): Record<string, ReadonlyArray.NonEmptyArray<B>> =>
+		pipe(self, ReadonlyArray.groupBy(fKey), ReadonlyRecord.map(ReadonlyArray.map(fValue)));

@@ -1,7 +1,7 @@
 //export const isoToday = new Date().toISOString();
 //export const YYYYMMddToday = isoToday.slice(0, 4) + isoToday.slice(5, 7) + isoToday.slice(8, 10);
 
-import { StringUtils } from '@mjljm/js-lib';
+import { JsString } from '@mjljm/js-lib';
 import { Context, Layer } from 'effect';
 
 export interface ServiceInterface {
@@ -15,5 +15,5 @@ export const ServiceTag = Context.Tag<ServiceInterface>();
 export const live = Layer.succeed(ServiceTag, {
 	asDate: () => new Date(),
 	asIsoString: () => new Date().toISOString(),
-	asYyyymmdd: () => StringUtils.isoToYyyymmdd(new Date().toISOString())
+	asYyyymmdd: () => JsString.isoToYyyymmdd(new Date().toISOString())
 });
