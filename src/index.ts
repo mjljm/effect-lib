@@ -1,5 +1,4 @@
 export * as MChunk from '#mjljm/effect-lib/Chunk';
-export * as MDate from '#mjljm/effect-lib/Date';
 export * as MEffect from '#mjljm/effect-lib/Effect';
 export * as MEither from '#mjljm/effect-lib/Either';
 export * as MEqValue from '#mjljm/effect-lib/EqValue';
@@ -16,3 +15,4 @@ export * as ScopeOnce from '#mjljm/effect-lib/ScopeOnce';
 export * as MStream from '#mjljm/effect-lib/Stream';
 export * as MString from '#mjljm/effect-lib/String';
 export * as MTree from '#mjljm/effect-lib/Tree';
+export * as MDate from '#mjljm/effect-lib/date';
