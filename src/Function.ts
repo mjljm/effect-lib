@@ -306,7 +306,7 @@ export const iif: {
 /**
  * Pipable if else
  */
-/*export const ifElse: {
+export const ifElse: {
 	<A, B extends A, C>(
 		cond: Predicate.Refinement<A, B>,
 		options: { onTrue: (b: B) => C; onFalse: (a: A) => C }
@@ -315,7 +315,7 @@ export const iif: {
 } =
 	<A, B>(cond: Predicate.Predicate<A>, options: { onTrue: (a: A) => B; onFalse: (a: A) => B }) =>
 	(a: A) =>
-		cond(a) ? options.onTrue(a) : options.onFalse(a);*/
+		cond(a) ? options.onTrue(a) : options.onFalse(a);
 
 /**
  * Type that expands a type
