@@ -15,4 +15,3 @@ export * as ScopeOnce from '#mjljm/effect-lib/ScopeOnce';
 export * as MStream from '#mjljm/effect-lib/Stream';
 export * as MString from '#mjljm/effect-lib/String';
 export * as MTree from '#mjljm/effect-lib/Tree';
-export * as MDate from '#mjljm/effect-lib/date';
