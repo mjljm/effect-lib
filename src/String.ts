@@ -22,93 +22,87 @@ const SearchResult = MFunction.make<SearchResult>;
 export const fromNumber = (n: number): string => n.toString();
 
 /**
- * Same as search but returns a SearchResult. You can optionnally provide the index from which to start searching. Throws if g flag is not set in the regexp.
+ * Same as search but returns a SearchResult. You can optionnally provide the index from which to start searching.
  */
 
-export const searchWithPos = (
-	regexp: RegExp | string,
-	startIndex = 0
-): ((self: string) => Option.Option<SearchResult>) => {
-	const reg = MFunction.isString(regexp) ? new RegExp(regexp, 'g') : regexp;
-	if (!reg.flags.includes('g'))
-		throw new Error(`Function 'searchWithPos' of module '${moduleTag}' must be called with g flag set.`);
-	reg.lastIndex = startIndex;
+export const search =
+	(regexp: RegExp | string, startIndex = 0) =>
+	(self: string): Option.Option<SearchResult> => {
+		if (typeof regexp === 'string') {
+			const pos = self.indexOf(regexp, startIndex);
+			if (pos === -1) return Option.none();
+			return Option.some(SearchResult({ startIndex: pos, endIndex: pos + regexp.length, match: regexp }));
+		}
+		const target = self.slice(startIndex);
+		const result = regexp.exec(target);
+		if (result === null) return Option.none();
+		const offsetPos = startIndex + result.index;
+		const match = result[0];
+		return Option.some(SearchResult({ startIndex: offsetPos, endIndex: offsetPos + match.length, match }));
+	};
 
-	return (self: string) => {
-		const matchArray = reg.exec(self);
-		if (!matchArray) return Option.none();
-		const match = matchArray[0];
-		const index = matchArray.index;
-		return Option.some(
-			SearchResult({
-				startIndex: index,
-				endIndex: index + match.length,
-				match
-			})
+/**
+ * Finds all matches and, for each one, returns a SearchResult.
+ */
+export const searchAll =
+	(regexp: RegExp | string) =>
+	(self: string): Array<SearchResult> => {
+		const result: Array<SearchResult> = [];
+		let searchPos = 0;
+		for (;;) {
+			const searchResultOption = search(regexp, searchPos)(self);
+			if (Option.isNone(searchResultOption)) break;
+			const searchResult = searchResultOption.value;
+			result.push(searchResult);
+			searchPos = searchResult.endIndex;
+		}
+		return result;
+	};
+
+/**
+ * Same as search but returns the last matching pattern instead of the first. You can optionnally provide the index from which to start searching from right to left.
+ */
+export const searchRight =
+	(regexp: RegExp | string, startIndex = +Infinity) =>
+	(self: string): Option.Option<SearchResult> => {
+		if (typeof regexp === 'string') {
+			const pos = self.lastIndexOf(regexp, startIndex);
+			if (pos === -1) return Option.none();
+			return Option.some(SearchResult({ startIndex: pos, endIndex: pos + regexp.length, match: regexp }));
+		}
+		return pipe(
+			self,
+			searchAll(regexp),
+			ReadonlyArray.filter((searchResult) => searchResult.startIndex <= startIndex),
+			ReadonlyArray.last
 		);
 	};
-};
-
-/**
- * Finds all matches starting and, for each one, returns a SearchResult. Throws if g flag is not set.
- */
-export const searchAllWithPos = (regexp: RegExp | string): ((self: string) => Array<SearchResult>) => {
-	const reg = MFunction.isString(regexp) ? new RegExp(regexp, 'g') : regexp;
-	if (!reg.flags.includes('g'))
-		throw new Error(`Function 'searchAllWithPos' of module '${moduleTag}' must be called with g flag set.`);
-	return (self: string) =>
-		pipe(
-			self.matchAll(reg),
-			ReadonlyArray.fromIterable,
-			ReadonlyArray.map((matchArr) => {
-				const index = matchArr.index ?? 0;
-				const match = matchArr[0];
-				return SearchResult({
-					startIndex: index,
-					endIndex: index + match.length,
-					match
-				});
-			})
-		);
-};
-
-/**
- * Same as search but returns the last matching pattern instead of the first. g flag MUST BE PROVIDED for regexp or this function won't work.
- */
-export const searchRightWithPos = (regexp: RegExp | string): ((self: string) => Option.Option<SearchResult>) => {
-	const compiled = searchAllWithPos(regexp);
-	return (self: string) => pipe(self, compiled, ReadonlyArray.last);
-};
 
 /**
  * Looks from the left for the first substring of self that matches regexp and returns all characters before that substring. If no occurence is found, returns self
  */
-export const takeLeftTo = (regexp: RegExp | string): ((self: string) => string) => {
-	const compiled = String.search(regexp);
-	return (self: string) =>
+export const takeLeftTo =
+	(regexp: RegExp | string) =>
+	(self: string): string =>
 		pipe(
 			self,
-			compiled,
+			String.search(regexp),
 			Option.getOrElse(() => self.length),
 			(pos) => String.takeLeft(self, pos)
 		);
-};
-
 /**
- * Looks from the right for the first substring of self that matches target and returns all characters after that substring. If no occurence is found, returns self. g flag MUST BE PROVIDED for regexp or this function won't work.
+ * Looks from the right for the first substring of self that matches target and returns all characters after that substring. If no occurence is found, returns self.
  */
-export const takeRightFrom = (regexp: RegExp | string): ((self: string) => string) => {
-	const compiled = searchRightWithPos(regexp);
-	return (self: string) =>
+export const takeRightFrom =
+	(regexp: RegExp | string) =>
+	(self: string): string =>
 		pipe(
 			self,
-			compiled,
-			Option.map((searchItem) => searchItem.endIndex),
+			searchRight(regexp),
+			Option.map((searchResult) => searchResult.endIndex),
 			Option.getOrElse(() => 0),
 			(pos) => String.slice(pos)(self)
 		);
-};
-
 /**
  * Returns a some of the result of calling the toString method on obj provided it defines one different from Object.prototype.toString. If toString is not defined or not overloaded, it returns a some of the result of calling the toJson function on obj provided it defines one. If toString and toJson are not defined, returns a none.
  * @param obj
@@ -176,20 +170,12 @@ export const stripRight =
 		pipe(self, String.endsWith(s)) ? pipe(self, takeLeftBut(s.length)) : self;
 
 /**
- * Counts the number of occurences of regexp in self. Throws if g flag is not set
+ * Counts the number of occurences of regexp in self.
  */
-export const count = (regexp: RegExp | string): ((self: string) => number) => {
-	const reg = MFunction.isString(regexp) ? new RegExp(regexp, 'g') : regexp;
-	if (!reg.flags.includes('g'))
-		throw new Error(`Function 'count' of module '${moduleTag}' must be called with g flag set.`);
-	return (self: string) =>
-		pipe(
-			self,
-			String.match(regexp),
-			Option.map((matches) => matches.length),
-			Option.getOrElse(() => 0)
-		);
-};
+export const count =
+	(regexp: RegExp | string) =>
+	(self: string): number =>
+		pipe(self, searchAll(regexp), ReadonlyArray.length);
 
 /**
  * Adds a at the start of self
