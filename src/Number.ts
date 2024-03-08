@@ -2,6 +2,8 @@
  * Constructor
  */
 
+import { JsPatches } from '@mjljm/js-lib';
+
 export const unsafeIntFromString = (s: string): number => parseInt(s);
 
 /**
@@ -14,7 +16,4 @@ export const unsafeFromString = (s: string): number => +s;
  * Modulo - Use only with integers - Divisor must be positive. This implementation is slightly faster than ((self % divisor) + divisor) % divisor
  */
 
-export const intModulo =
-	(divisor: number) =>
-	(self: number): number =>
-		self >= 0 ? self % divisor : (self % divisor) + divisor;
+export const intModulo = JsPatches.intModulo;
