@@ -93,7 +93,7 @@ const checkRange = (
 	);
 
 /**
- * Returns the timestamp of the first day of year year at 00:00:00:000+00:00 (yearStartMs), the same timestamp modulo 400 years (yearStartMsModulo400Y), and whether the year is a leap year (isLeapYear). No input parameter check!
+ * Returns the timestamp of the first day of year `year` at 00:00:00:000+00:00 (yearStartMs), the same timestamp modulo 400 years (yearStartMsModulo400Y), and whether the year is a leap year (isLeapYear). No input parameter check!
  */
 export const unsafeYearToMs = (
 	year: number
@@ -185,7 +185,7 @@ export const msToYear = (
 export const getNbDaysInYear = (isLeapYear: boolean): number => (isLeapYear ? 366 : 365);
 
 /**
- * Returns the difference between the timestamp of the first day of year at 00:00:00:000+00:00 and the timestamp of ordinal day `ordinalDay` of year `year` at 00:00:00:000+00:00. No input parameter check!
+ * Returns the difference between the timestamp of the first day of a year at 00:00:00:000+00:00 and the timestamp of ordinal day `ordinalDay` of year `year` at 00:00:00:000+00:00. No input parameter check!
  */
 export const unsafeOrdinalDayToMs = (ordinalDay: number): number => {
 	return (ordinalDay - 1) * DAY_MS;
@@ -221,7 +221,7 @@ export const msToOrdinalDay = (ms: number, isLeapYear: boolean) =>
 	);
 
 /**
- * Returns the difference between the timestamp of the first day of year at 00:00:00:000+00:00 and the timestamp of date `year`/`month`/`monthDay` at 00:00:00:000+00:00. No input parameter check!
+ * Returns the difference between the timestamp of the first day of a year at 00:00:00:000+00:00 and the timestamp of date `year`/`month`/`monthDay` at 00:00:00:000+00:00. No input parameter check!
  */
 export const unsafeMonthAndMonthDayToMs = (month: number, monthDay: number, isLeapYear: boolean): number => {
 	const monthDescriptor = (isLeapYear ? leapYearMonths : normalYearMonths)[month - 1] as MonthDescriptor;
@@ -328,7 +328,7 @@ export const unsafeGetNbIsoWeeksInYear = (firstDayOfYearWeekDay: number, isLeapY
 	unsafeIsLongIsoYear(firstDayOfYearWeekDay, isLeapYear) ? 53 : 52;
 
 /**
- * Returns the difference between the timestamp of the first day of year at 00:00:00:000+00:00 and the timestamp of day `weekDay` of iso week `isoWeek` at 00:00:00:000+00:00. No input parameter check!
+ * Returns the difference between the timestamp of the first day of a year at 00:00:00:000+00:00 and the timestamp of day `weekDay` of iso week `isoWeek` at 00:00:00:000+00:00. No input parameter check!
  */
 export const unsafeWeekAndWeekDayToMs = (isoWeek: number, weekDay: number, yearStartMs: number): number =>
 	unsafeGetFirstIsoWeekMs(getWeekDay(yearStartMs)) + (isoWeek - 1) * WEEK_MS + (weekDay - 1) * DAY_MS;
@@ -400,4 +400,168 @@ export const unsafeMsToWeekDay = (ms: number): { weekDay: number; remainsMs: num
  * Same as unsafeMsToWeekDay but with input parameter check
  */
 export const msToWeekDay = (ms: number) =>
-	pipe(checkRange('weekDay millisecond offset', ms, 0, WEEK_MS - 1), Either.map(unsafeMsToMonthDay));
+	pipe(checkRange('infraweek millisecond offset', ms, 0, WEEK_MS - 1), Either.map(unsafeMsToMonthDay));
+
+/**
+ * Converts an hour24 to milliseconds. No input parameter check!
+ */
+export const unsafeHour24ToMs = (hour24: number): number => {
+	return hour24 * HOUR_MS;
+};
+
+/**
+ * Same as unsafeHour24ToMs but with input parameter check
+ */
+export const hour24ToMs = (hour24: number): Either.Either<number, MErrors.InvalidDate> =>
+	pipe(checkRange('hour in 24-hour format', hour24, 0, 23), Either.map(unsafeHour24ToMs));
+
+/**
+ * Takes an offset in milliseconds from the start of a day. Returns the corresponding hour24 and the remaining milliseconds (remainsMs). No input parameter check!
+ */
+export const unsafeMsToHour24 = (ms: number): { hour24: number; remainsMs: number } => {
+	const hour24 = Math.floor(ms / HOUR_MS);
+
+	return {
+		hour24,
+		remainsMs: ms - hour24 * HOUR_MS
+	};
+};
+
+/**
+ * Same as unsafeMsToHour24 but with input parameter check
+ */
+export const msToHour24 = (
+	ms: number
+): Either.Either<{ hour24: number; remainsMs: number }, MErrors.InvalidDate> =>
+	pipe(checkRange('infraday millisecond offset', ms, 0, DAY_MS - 1), Either.map(unsafeMsToHour24));
+
+/**
+ * Converts an hour12 and meridiem to milliseconds. No input parameter check!
+ */
+export const unsafeHour12AndMeridiemToMs = (hour12: number, meridiem: 0 | 12): number => {
+	return (hour12 + meridiem) * HOUR_MS;
+};
+
+/**
+ * Same as unsafeHour12AndMeridiemToMs but with input parameter check
+ */
+export const hour12AndMeridiemToMs = (
+	hour12: number,
+	meridiem: 0 | 12
+): Either.Either<number, MErrors.InvalidDate> =>
+	pipe(
+		checkRange('hour in 12-hour format', hour12, 0, 11),
+		Either.map((checkedHour12) => unsafeHour12AndMeridiemToMs(checkedHour12, meridiem))
+	);
+
+/**
+ * Takes an offset in milliseconds from the start of a day. Returns the corresponding hour12 and meridiem and the remaining milliseconds (remainsMs). No input parameter check!
+ */
+export const unsafeMsToHour12AndMeridiem = (
+	ms: number
+): { hour12: number; meridiem: 0 | 12; remainsMs: number } => {
+	const { hour24, remainsMs } = unsafeMsToHour24(ms);
+	const meridiem = hour24 >= 12 ? 12 : 0;
+	return {
+		hour12: hour24 - meridiem,
+		meridiem,
+		remainsMs: remainsMs
+	};
+};
+
+/**
+ * Same as unsafeMsToHour12AndMeridiem but with input parameter check
+ */
+export const msToHour12AndMeridiem = (
+	ms: number
+): Either.Either<{ hour12: number; meridiem: 0 | 12; remainsMs: number }, MErrors.InvalidDate> =>
+	pipe(checkRange('infraday millisecond offset', ms, 0, DAY_MS - 1), Either.map(unsafeMsToHour12AndMeridiem));
+
+/**
+ * Converts a number of minutes to milliseconds. No input parameter check!
+ */
+export const unsafeMinuteToMs = (minute: number): number => {
+	return minute * MINUTE_MS;
+};
+
+/**
+ * Same as unsafeMinuteToMs but with input parameter check
+ */
+export const minuteToMs = (minute: number): Either.Either<number, MErrors.InvalidDate> =>
+	pipe(checkRange('minute', minute, 0, 59), Either.map(unsafeMinuteToMs));
+
+/**
+ * Takes an offset in milliseconds from the start of an hour. Returns the corresponding minute and the remaining milliseconds (remainsMs). No input parameter check!
+ */
+export const unsafeMsToMinute = (ms: number): { minute: number; remainsMs: number } => {
+	const minute = Math.floor(ms / MINUTE_MS);
+
+	return {
+		minute,
+		remainsMs: ms - minute * MINUTE_MS
+	};
+};
+
+/**
+ * Same as unsafeMsToMinute but with input parameter check
+ */
+export const msToMinute = (
+	ms: number
+): Either.Either<{ minute: number; remainsMs: number }, MErrors.InvalidDate> =>
+	pipe(checkRange('infrahour millisecond offset', ms, 0, HOUR_MS - 1), Either.map(unsafeMsToMinute));
+
+/**
+ * Converts a number of seconds to milliseconds. No input parameter check!
+ */
+export const unsafeSecondToMs = (second: number): number => {
+	return second * SECOND_MS;
+};
+
+/**
+ * Same as unsafeSecondToMs but with input parameter check
+ */
+export const secondToMs = (second: number): Either.Either<number, MErrors.InvalidDate> =>
+	pipe(checkRange('second', second, 0, 59), Either.map(unsafeSecondToMs));
+
+/**
+ * Takes an offset in milliseconds from the start of a minute. Returns the corresponding second and the remaining milliseconds (remainsMs). No input parameter check!
+ */
+export const unsafeMsToSecond = (ms: number): { second: number; remainsMs: number } => {
+	const second = Math.floor(ms / SECOND_MS);
+
+	return {
+		second,
+		remainsMs: ms - second * MINUTE_MS
+	};
+};
+
+/**
+ * Same as unsafeMsToSecond but with input parameter check
+ */
+export const msToSecond = (
+	ms: number
+): Either.Either<{ second: number; remainsMs: number }, MErrors.InvalidDate> =>
+	pipe(checkRange('inframinute millisecond offset', ms, 0, MINUTE_MS - 1), Either.map(unsafeMsToSecond));
+
+/**
+ * Converts a number of milliseconds to milliseconds
+ */
+export const millisecondToMs = (millisecond: number): Either.Either<number, MErrors.InvalidDate> =>
+	checkRange('millisecond', millisecond, 0, SECOND_MS - 1);
+
+/**
+ * Takes an offset in milliseconds from the start of a second. Returns the corresponding millisecond
+ */
+export const msToMillisecond = (ms: number): Either.Either<number, MErrors.InvalidDate> =>
+	checkRange('infrasecond millisecond offset', ms, 0, SECOND_MS - 1);
+
+/**
+ * Converts a timeZoneOffset to milliseconds. No input parameter check!
+ */
+export const unsafeTimeZoneOffsetToMs = (timeZoneOffset: number): number => -timeZoneOffset * HOUR_MS;
+
+/**
+ * Same as unsafeTimeZoneOffsetToMs but with input parameter check
+ */
+export const timeZoneOffsetToMs = (timeZoneOffset: number): Either.Either<number, MErrors.InvalidDate> =>
+	pipe(checkRange('time zone offset', timeZoneOffset, -12, 14), Either.map(unsafeTimeZoneOffsetToMs));
