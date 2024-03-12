@@ -1,5 +1,4 @@
 import { Either, Equal, Function, Option, Predicate, ReadonlyArray, ReadonlyRecord, Tuple, pipe } from 'effect';
-import { NoInfer } from 'effect/Types';
 
 /**
  * Returns true if the provided ReadonlyArray contains duplicates

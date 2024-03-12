@@ -11,6 +11,7 @@ import {
 	ReadonlyArray,
 	identity
 } from 'effect';
+import { flip } from 'effect/Function';
 
 //const moduleTag = '@mjljm/effect-lib/Function/';
 
@@ -302,7 +303,7 @@ export const iif: {
 	<A>(cond: Predicate.Predicate<A>, onTrue: (a: A) => A) =>
 	(a: A) =>
 		cond(a) ? onTrue(a) : a;
-
+flip;
 /**
  * Pipable if else
  */
@@ -316,6 +317,18 @@ export const ifElse: {
 	<A, B>(cond: Predicate.Predicate<A>, options: { onTrue: (a: A) => B; onFalse: (a: A) => B }) =>
 	(a: A) =>
 		cond(a) ? options.onTrue(a) : options.onFalse(a);
+
+/**
+ * Flips a dual function
+ */
+export const flipDual =
+	<Args extends ReadonlyArray<unknown>>(f: {
+		(...args: Args): (self: unknown) => unknown;
+		(self: unknown, ...args: Args): unknown;
+	}) =>
+	(self: unknown) =>
+	(...args: Args) =>
+		f(...args)(self);
 
 /**
  * Type that expands a type

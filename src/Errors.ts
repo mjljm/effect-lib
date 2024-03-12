@@ -13,3 +13,10 @@ export class FunctionPort extends Data.TaggedError('FunctionPort')<{
 	readonly moduleName: string;
 	readonly libraryName: string;
 }> {}
+
+/**
+ * InvalidDate signals an invalid date
+ */
+export class InvalidDate extends Data.TaggedError('InvalidDate')<{
+	readonly message: string;
+}> {}

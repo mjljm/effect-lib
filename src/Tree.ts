@@ -1,7 +1,6 @@
 import { MFunction, MReadonlyArray } from '#mjljm/effect-lib/index';
 import { Monoid } from '@effect/typeclass';
 import { Equal, Equivalence, Function, HashSet, ReadonlyArray, pipe } from 'effect';
-import { NoInfer } from 'effect/Types';
 
 //const moduleTag = '@mjljm/effect-lib/Tree/';
 
