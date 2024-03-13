@@ -1,6 +1,5 @@
 import * as MFunction from '#mjljm/effect-lib/Function';
-import { JsRegExp } from '@mjljm/js-lib';
-import { Function, HashMap, Option, Order, ReadonlyArray, String, Tuple, pipe } from 'effect';
+import { Function, Option, Order, ReadonlyArray, String, Tuple, flow, pipe } from 'effect';
 
 const moduleTag = '@mjljm/effect-lib/effect/String/';
 
@@ -14,6 +13,18 @@ export interface SearchResult {
 }
 
 const SearchResult = MFunction.make<SearchResult>;
+const searchResultByStartIndex = Order.mapInput(
+	Order.number,
+	(searchResult: SearchResult) => searchResult.startIndex
+);
+const searchResultByEndIndex = Order.mapInput(Order.number, (searchResult: SearchResult) => searchResult.endIndex);
+const searchResultByStartIndexAndReverseEndIndex = Order.combine(
+	searchResultByStartIndex,
+	Order.reverse(searchResultByEndIndex)
+);
+
+const overlappingSearchResult = (sR1: SearchResult, sR2: SearchResult) =>
+	sR1.startIndex <= sR2.endIndex && sR1.endIndex >= sR2.startIndex;
 
 /**
  * Constructor
@@ -109,16 +120,15 @@ export const takeRightFrom =
  * @returns
  */
 export const tryToStringToJson = (obj: MFunction.Record): Option.Option<string> => {
-	const safeApply = (f: unknown): Option.Option<string> => {
-		if (MFunction.isFunction(f)) {
-			try {
-				return pipe(f.apply(obj), Option.liftPredicate(MFunction.isString));
-			} catch (e) {
-				return Option.none();
-			}
+	const tryApplyingFOnObj = (f: MFunction.Function) => {
+		try {
+			return pipe(obj, f.apply, Option.liftPredicate(MFunction.isString));
+		} catch (e) {
+			return Option.none();
 		}
-		return Option.none();
 	};
+	const safeApply = (f: unknown): Option.Option<string> =>
+		pipe(f, Option.liftPredicate(MFunction.isFunction), Option.flatMap(tryApplyingFOnObj));
 	return pipe(
 		obj['toString'],
 		Option.liftPredicate((toString) => toString !== Object.prototype.toString),
@@ -159,7 +169,7 @@ export const takeRightBut =
 export const stripLeft =
 	(s: string) =>
 	(self: string): string =>
-		pipe(self, String.startsWith(s)) ? pipe(self, takeRightBut(s.length)) : self;
+		pipe(self, MFunction.iif(String.startsWith(s), takeRightBut(s.length)));
 
 /**
  * If self ends with s, returns self stripped of s. Otherwise, returns s
@@ -167,7 +177,7 @@ export const stripLeft =
 export const stripRight =
 	(s: string) =>
 	(self: string): string =>
-		pipe(self, String.endsWith(s)) ? pipe(self, takeLeftBut(s.length)) : self;
+		pipe(self, MFunction.iif(String.endsWith(s), takeLeftBut(s.length)));
 
 /**
  * Counts the number of occurences of regexp in self.
@@ -194,29 +204,35 @@ export const prepend =
  * @returns A tuple containing a copy of self where all tokens have been replaced by their projection from the map and an array of the found tokens in the order in which they were found.
  **/
 
-export const replaceMulti = <Pattern extends string, A>(
-	map: HashMap.HashMap<Pattern, A>,
-	f: (a: A) => string
-): ((self: string) => [modified: string, matchList: Array<[Pattern, A]>]) => {
-	const searchPattern = new RegExp(
+export const formatWrite =
+	<A>(tokens: ReadonlyArray<A>, f: (a: A) => string) =>
+	(self: string): (<B>(tokenValues: ReadonlyArray<B>, f: (b: B) => string) => string) =>
 		pipe(
-			map,
-			HashMap.keys,
-			ReadonlyArray.fromIterable,
-			// We sort the patterns in reverse order so smaller patterns match after larger ones in which they may be included.
-			ReadonlyArray.sort(Order.reverse(Order.string)),
-			(arr) => JsRegExp.either(...arr),
-			JsRegExp.capture
-		),
-		'g'
-	);
-	return (self: string) => {
-		const foundPatterns: Array<[Pattern, A]> = [];
-		const modified = self.replace(searchPattern, (match) => {
-			const a = HashMap.unsafeGet(map, match);
-			foundPatterns.push(Tuple.make(match as Pattern, a));
-			return f(a);
-		});
-		return Tuple.make(modified, foundPatterns);
-	};
-};
+			tokens,
+			ReadonlyArray.map((a, i) =>
+				pipe(
+					a,
+					f,
+					Function.flip(searchAll)(self),
+					ReadonlyArray.map((sR) => Tuple.make(i, sR))
+				)
+			),
+			ReadonlyArray.flatten,
+			MFunction.iif(
+				ReadonlyArray.isNonEmptyArray,
+				flow(
+					ReadonlyArray.groupWith(([_, selfSR], [_, thatSR]) => overlappingSearchResult(selfSR, thatSR)),
+					ReadonlyArray.map(
+						flow(
+							ReadonlyArray.sort(
+								Order.mapInput(searchResultByStartIndexAndReverseEndIndex, ([_, sR]: [number, SearchResult]) => sR)
+							),
+							ReadonlyArray.headNonEmpty
+						)
+					),
+					ReadonlyArray.groupWith(([selfI], [thatI]) => selfI === thatI),
+					ReadonlyArray.map((arr) => Tuple.make(ReadonlyArray.headNonEmpty(arr)[0], arr))
+				)
+			),
+			(z) => z
+		) as never;

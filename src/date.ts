@@ -1,4 +1,4 @@
-import * as MErrors from '#mjljm/effect-lib/Errors';
+import { MBadArgumentError } from '#mjljm/effect-lib/index';
 import { JsPatches } from '@mjljm/js-lib';
 import { Either, Number, Option, Predicate, pipe } from 'effect';
 
@@ -80,15 +80,12 @@ const checkRange = (
 	value: number,
 	min: number,
 	max: number
-): Either.Either<number, MErrors.InvalidDate> =>
+): Either.Either<number, MBadArgumentError.OutOfRange> =>
 	pipe(
 		value,
 		Option.liftPredicate(Predicate.and(Number.greaterThanOrEqualTo(min), Number.lessThanOrEqualTo(max))),
 		Either.fromOption(
-			() =>
-				new MErrors.InvalidDate({
-					message: `Invalid ${label} range. Actual:${value}, expected: integer between ${min} included and ${max} included`
-				})
+			() => new MBadArgumentError.OutOfRange({ actual: value, min, max, message: `Invalid ${label} range` })
 		)
 	);
 
@@ -128,7 +125,7 @@ export const yearToMs = (
 	year: number
 ): Either.Either<
 	{ yearStartMs: number; yearStartMsModulo400Y: number; isLeapYear: boolean },
-	MErrors.InvalidDate
+	MBadArgumentError.OutOfRange
 > => pipe(checkRange('year', year, MIN_FULL_YEAR, MAX_FULL_YEAR), Either.map(unsafeYearToMs));
 
 /**
@@ -176,7 +173,7 @@ export const msToYear = (
 	ms: number
 ): Either.Either<
 	{ year: number; yearStartMs: number; yearStartMsModulo400Y: number; isLeapYear: boolean; remainsMs: number },
-	MErrors.InvalidDate
+	MBadArgumentError.OutOfRange
 > => pipe(checkRange('timestamp', ms, MIN_TIMESTAMP, MAX_TIMESTAMP), Either.map(unsafeMsToYear));
 
 /**
@@ -197,7 +194,7 @@ export const unsafeOrdinalDayToMs = (ordinalDay: number): number => {
 export const ordinalDayToMs = (
 	ordinalDay: number,
 	isLeapYear: boolean
-): Either.Either<number, MErrors.InvalidDate> =>
+): Either.Either<number, MBadArgumentError.OutOfRange> =>
 	pipe(checkRange('year day', ordinalDay, 1, getNbDaysInYear(isLeapYear)), Either.map(unsafeOrdinalDayToMs));
 
 /**
@@ -235,7 +232,7 @@ export const monthAndMonthDayToMs = (
 	month: number,
 	monthDay: number,
 	isLeapYear: boolean
-): Either.Either<number, MErrors.InvalidDate> =>
+): Either.Either<number, MBadArgumentError.OutOfRange> =>
 	Either.gen(function* (_) {
 		const checkedMonth = yield* _(checkRange('month', month, 1, 12));
 		const monthDescriptor = (isLeapYear ? leapYearMonths : normalYearMonths)[checkedMonth - 1] as MonthDescriptor;
@@ -278,7 +275,7 @@ export const msToMonth = (
 	isLeapYear: boolean
 ): Either.Either<
 	{ month: number; monthStartMs: number; nbDaysInMonth: number; remainsMs: number },
-	MErrors.InvalidDate
+	MBadArgumentError.OutOfRange
 > =>
 	pipe(
 		checkRange('infrayear millisecond offset', ms, 0, (isLeapYear ? LEAP_YEAR_MS : NORMAL_YEAR_MS) - 1),
@@ -303,7 +300,7 @@ export const msToMonthDay = (
 	ms: number,
 	monthStartMs: number,
 	nextMonthStartMs: number
-): Either.Either<{ monthDay: number; remainsMs: number }, MErrors.InvalidDate> =>
+): Either.Either<{ monthDay: number; remainsMs: number }, MBadArgumentError.OutOfRange> =>
 	pipe(
 		checkRange('inframonth millisecond offset', ms, 0, nextMonthStartMs - monthStartMs - 1),
 		Either.map(unsafeMsToMonthDay)
@@ -341,7 +338,7 @@ export const weekAndWeekDayToMs = (
 	weekDay: number,
 	yearStartMs: number,
 	isLeapYear: boolean
-): Either.Either<number, MErrors.InvalidDate> =>
+): Either.Either<number, MBadArgumentError.OutOfRange> =>
 	Either.gen(function* (_) {
 		const firstDayOfYearWeekDay = getWeekDay(yearStartMs);
 		const checkedIsoWeek = yield* _(
@@ -374,7 +371,7 @@ export const msToIsoWeek = (
 	ms: number,
 	yearStartMs: number,
 	isLeapYear: boolean
-): Either.Either<{ isoWeek: number; remainsMs: number }, MErrors.InvalidDate> =>
+): Either.Either<{ isoWeek: number; remainsMs: number }, MBadArgumentError.OutOfRange> =>
 	pipe(
 		checkRange(
 			'infra iso year millisecond offset',
@@ -412,7 +409,7 @@ export const unsafeHour24ToMs = (hour24: number): number => {
 /**
  * Same as unsafeHour24ToMs but with input parameter check
  */
-export const hour24ToMs = (hour24: number): Either.Either<number, MErrors.InvalidDate> =>
+export const hour24ToMs = (hour24: number): Either.Either<number, MBadArgumentError.OutOfRange> =>
 	pipe(checkRange('hour in 24-hour format', hour24, 0, 23), Either.map(unsafeHour24ToMs));
 
 /**
@@ -432,7 +429,7 @@ export const unsafeMsToHour24 = (ms: number): { hour24: number; remainsMs: numbe
  */
 export const msToHour24 = (
 	ms: number
-): Either.Either<{ hour24: number; remainsMs: number }, MErrors.InvalidDate> =>
+): Either.Either<{ hour24: number; remainsMs: number }, MBadArgumentError.OutOfRange> =>
 	pipe(checkRange('infraday millisecond offset', ms, 0, DAY_MS - 1), Either.map(unsafeMsToHour24));
 
 /**
@@ -448,7 +445,7 @@ export const unsafeHour12AndMeridiemToMs = (hour12: number, meridiem: 0 | 12): n
 export const hour12AndMeridiemToMs = (
 	hour12: number,
 	meridiem: 0 | 12
-): Either.Either<number, MErrors.InvalidDate> =>
+): Either.Either<number, MBadArgumentError.OutOfRange> =>
 	pipe(
 		checkRange('hour in 12-hour format', hour12, 0, 11),
 		Either.map((checkedHour12) => unsafeHour12AndMeridiemToMs(checkedHour12, meridiem))
@@ -474,7 +471,7 @@ export const unsafeMsToHour12AndMeridiem = (
  */
 export const msToHour12AndMeridiem = (
 	ms: number
-): Either.Either<{ hour12: number; meridiem: 0 | 12; remainsMs: number }, MErrors.InvalidDate> =>
+): Either.Either<{ hour12: number; meridiem: 0 | 12; remainsMs: number }, MBadArgumentError.OutOfRange> =>
 	pipe(checkRange('infraday millisecond offset', ms, 0, DAY_MS - 1), Either.map(unsafeMsToHour12AndMeridiem));
 
 /**
@@ -487,7 +484,7 @@ export const unsafeMinuteToMs = (minute: number): number => {
 /**
  * Same as unsafeMinuteToMs but with input parameter check
  */
-export const minuteToMs = (minute: number): Either.Either<number, MErrors.InvalidDate> =>
+export const minuteToMs = (minute: number): Either.Either<number, MBadArgumentError.OutOfRange> =>
 	pipe(checkRange('minute', minute, 0, 59), Either.map(unsafeMinuteToMs));
 
 /**
@@ -507,7 +504,7 @@ export const unsafeMsToMinute = (ms: number): { minute: number; remainsMs: numbe
  */
 export const msToMinute = (
 	ms: number
-): Either.Either<{ minute: number; remainsMs: number }, MErrors.InvalidDate> =>
+): Either.Either<{ minute: number; remainsMs: number }, MBadArgumentError.OutOfRange> =>
 	pipe(checkRange('infrahour millisecond offset', ms, 0, HOUR_MS - 1), Either.map(unsafeMsToMinute));
 
 /**
@@ -520,7 +517,7 @@ export const unsafeSecondToMs = (second: number): number => {
 /**
  * Same as unsafeSecondToMs but with input parameter check
  */
-export const secondToMs = (second: number): Either.Either<number, MErrors.InvalidDate> =>
+export const secondToMs = (second: number): Either.Either<number, MBadArgumentError.OutOfRange> =>
 	pipe(checkRange('second', second, 0, 59), Either.map(unsafeSecondToMs));
 
 /**
@@ -540,19 +537,19 @@ export const unsafeMsToSecond = (ms: number): { second: number; remainsMs: numbe
  */
 export const msToSecond = (
 	ms: number
-): Either.Either<{ second: number; remainsMs: number }, MErrors.InvalidDate> =>
+): Either.Either<{ second: number; remainsMs: number }, MBadArgumentError.OutOfRange> =>
 	pipe(checkRange('inframinute millisecond offset', ms, 0, MINUTE_MS - 1), Either.map(unsafeMsToSecond));
 
 /**
  * Converts a number of milliseconds to milliseconds
  */
-export const millisecondToMs = (millisecond: number): Either.Either<number, MErrors.InvalidDate> =>
+export const millisecondToMs = (millisecond: number): Either.Either<number, MBadArgumentError.OutOfRange> =>
 	checkRange('millisecond', millisecond, 0, SECOND_MS - 1);
 
 /**
  * Takes an offset in milliseconds from the start of a second. Returns the corresponding millisecond
  */
-export const msToMillisecond = (ms: number): Either.Either<number, MErrors.InvalidDate> =>
+export const msToMillisecond = (ms: number): Either.Either<number, MBadArgumentError.OutOfRange> =>
 	checkRange('infrasecond millisecond offset', ms, 0, SECOND_MS - 1);
 
 /**
@@ -563,5 +560,5 @@ export const unsafeTimeZoneOffsetToMs = (timeZoneOffset: number): number => -tim
 /**
  * Same as unsafeTimeZoneOffsetToMs but with input parameter check
  */
-export const timeZoneOffsetToMs = (timeZoneOffset: number): Either.Either<number, MErrors.InvalidDate> =>
+export const timeZoneOffsetToMs = (timeZoneOffset: number): Either.Either<number, MBadArgumentError.OutOfRange> =>
 	pipe(checkRange('time zone offset', timeZoneOffset, -12, 14), Either.map(unsafeTimeZoneOffsetToMs));
