@@ -166,6 +166,29 @@ export const validateAll =
 		);
 
 /**
+ * Flattens an array of arrays of A's so as to apply an operation (sorting, filtering) on the internal elements but adds an index that will allow to come back to the original structure
+ */
+export const toIndexedFlattened = <A>(arr: ReadonlyArray<ReadonlyArray<A>>): ReadonlyArray<[number, A]> =>
+	pipe(
+		arr,
+		ReadonlyArray.map((as, i) => ReadonlyArray.map(as, (a) => Tuple.make(i, a))),
+		ReadonlyArray.flatten
+	);
+
+/**
+ * Opposite operation of toIndexedFlattened
+ */
+export const fromIndexedFlattened =
+	(size: number) =>
+	<A>(flatIndexed: ReadonlyArray<[number, A]>): ReadonlyArray<ReadonlyArray<A>> => {
+		const out = ReadonlyArray.makeBy(size, () => ReadonlyArray.empty<A>());
+		for (const [index, value] of flatIndexed) {
+			if (index >= 0 && index < size) (out[index] as Array<A>).push(value);
+		}
+		return out;
+	};
+
+/**
  * Same as ReadonlyArray.groupBy but with a value projection function
  */
 export const groupBy =
@@ -176,30 +199,23 @@ export const groupBy =
 /**
  * Same as ReadonlyArray.groupBy but stores the results in a map instead of an object which allows to use keys others than strings.
  */
-export const groupByInMapWith =
-	<A, B, C>(
-		fKey: (a: A) => C,
-		fValue: (a: A) => B,
-		isEquivalent: (self: NoInfer<C>, that: NoInfer<C>) => boolean
-	) =>
-	(self: ReadonlyArray<A>): HashMap.HashMap<C, ReadonlyArray.NonEmptyArray<B>> =>
-		ReadonlyArray.match(self, {
-			onEmpty: () => HashMap.empty(),
-			onNonEmpty: flow(
-				ReadonlyArray.map((a) => Tuple.make(fKey(a), fValue(a))),
-				ReadonlyArray.groupWith(([selfC], [thatC]) => isEquivalent(selfC, thatC)),
-				ReadonlyArray.map((group) =>
-					Tuple.make(
-						pipe(group, ReadonlyArray.headNonEmpty, Tuple.getFirst),
-						pipe(group, ReadonlyArray.map(Tuple.getSecond))
+export const groupByInMap =
+	<A, B, C>(fKey: (a: A) => C, fValue: (a: A) => B) =>
+	(self: ReadonlyArray<A>): HashMap.HashMap<C, ReadonlyArray.NonEmptyArray<B>> => {
+		return HashMap.mutate(HashMap.empty<C, ReadonlyArray.NonEmptyArray<B>>(), (map) => {
+			for (const a of self) {
+				const c = fKey(a);
+				const b = fValue(a);
+				HashMap.modifyAt(map, c, (o) =>
+					pipe(
+						o,
+						Option.map((v) => {
+							v.push(b);
+							return v;
+						}),
+						Option.orElse(() => Option.some(ReadonlyArray.make(b)))
 					)
-				),
-				HashMap.fromIterable
-			)
+				);
+			}
 		});
-
-/**
- * Same as groupInMap with but uses the equal equivalence
- */
-export const groupByInMap = <A, B, C>(fKey: (a: A) => C, fValue: (a: A) => B) =>
-	groupByInMapWith(fKey, fValue, Equal.equivalence());
+	};

@@ -1,7 +1,9 @@
 import * as MFunction from '#mjljm/effect-lib/Function';
-import { Function, Option, Order, ReadonlyArray, String, Tuple, flow, pipe } from 'effect';
+import { MReadonlyArray } from '#mjljm/effect-lib/index';
+import { Function, Option, Order, ReadonlyArray, String, Struct, Tuple, pipe } from 'effect';
+import { compose } from 'effect/Function';
 
-const moduleTag = '@mjljm/effect-lib/effect/String/';
+//const moduleTag = '@mjljm/effect-lib/effect/String/';
 
 export interface SearchResult {
 	/** Index of the first letter of the match */
@@ -23,8 +25,8 @@ const searchResultByStartIndexAndReverseEndIndex = Order.combine(
 	Order.reverse(searchResultByEndIndex)
 );
 
-const overlappingSearchResult = (sR1: SearchResult, sR2: SearchResult) =>
-	sR1.startIndex <= sR2.endIndex && sR1.endIndex >= sR2.startIndex;
+/*const overlappingSearchResult = (sR1: SearchResult, sR2: SearchResult) =>
+	sR1.startIndex <= sR2.endIndex && sR1.endIndex >= sR2.startIndex;*/
 
 /**
  * Constructor
@@ -196,43 +198,61 @@ export const prepend =
 		s + self;
 
 /**
- * Simple templating function.
- * @param self template that contains tokens to replace
- * @param map map that associates each token to a value A
- * @param f function that projects an A on a string
- * @param locale locale to use to parse the date. If omitted, system locale is used. The locale is used for tokens that output a string like `MMM`, `MMMM`, `EEE`, `EEEE`,...
- * @returns A tuple containing a copy of self where all tokens have been replaced by their projection from the map and an array of the found tokens in the order in which they were found.
+ * Replaces the text between startIndex included and endIndex excluded by replacement
+ */
+export const replaceBetween = (replacement: string, startIndex: number, endIndex: number) => (self: string) =>
+	self.substring(0, startIndex) + replacement + self.substring(endIndex);
+
+/**
+ * Simple templating function that replaces tokens in a string by the values of those tokens
+ * @param self a template in which tokens will be searched and replaced.
+ * @param tokens an array containing the tokens to replace. Each token can appear 0, 1 or several times in self. Tokens can overlap, e.g `falling-tree`, `tree`, `tree-shaking`. In this case, te foremost and longest token takes precedence. For instance, in the template `this bundler is good at tree-shaking`, although `tree` and `tree-shaking` are present at the same position, the longest token `tree-shaking` will take precedence and impose its value.
+ * @returns a compiled function that takes an array of values (in the same order as the tokens) and returns self where each token has been replaced by its value. If the array of values contains less entries than the array of tokens, the extra tokens will not be replaced. If it contains more entries, the extra values are ignored.
  **/
 
 export const formatWrite =
-	<A>(tokens: ReadonlyArray<A>, f: (a: A) => string) =>
-	(self: string): (<B>(tokenValues: ReadonlyArray<B>, f: (b: B) => string) => string) =>
-		pipe(
+	(tokens: ReadonlyArray<string>) =>
+	(self: string): ((tokenValues: ReadonlyArray<string>) => string) => {
+		const replacer = pipe(
 			tokens,
-			ReadonlyArray.map((a, i) =>
-				pipe(
-					a,
-					f,
-					Function.flip(searchAll)(self),
-					ReadonlyArray.map((sR) => Tuple.make(i, sR))
-				)
+			ReadonlyArray.map(Function.flip(searchAll)(self)),
+			MReadonlyArray.toIndexedFlattened,
+			// Suppress overlapping tokens keeping the foremost longest one
+			ReadonlyArray.sort(
+				Order.mapInput(searchResultByStartIndexAndReverseEndIndex, ([_, sR]: [number, SearchResult]) => sR)
 			),
-			ReadonlyArray.flatten,
-			MFunction.iif(
-				ReadonlyArray.isNonEmptyArray,
-				flow(
-					ReadonlyArray.groupWith(([_, selfSR], [_, thatSR]) => overlappingSearchResult(selfSR, thatSR)),
-					ReadonlyArray.map(
-						flow(
-							ReadonlyArray.sort(
-								Order.mapInput(searchResultByStartIndexAndReverseEndIndex, ([_, sR]: [number, SearchResult]) => sR)
+			ReadonlyArray.reduce(ReadonlyArray.empty<[number, SearchResult]>(), (acc, indexedSR) => {
+				const sRStartIndex = pipe(indexedSR, Tuple.getSecond, Struct.get('startIndex'));
+				const bound = pipe(
+					acc,
+					ReadonlyArray.last,
+					Option.map(compose(Tuple.getSecond, Struct.get('endIndex'))),
+					Option.getOrElse(() => 0)
+				);
+				return sRStartIndex < bound ? acc : ReadonlyArray.append(acc, indexedSR);
+			}),
+			(indexedSearchResults) => (template: string, tokenValues: ReadonlyArray<string>) =>
+				pipe(
+					indexedSearchResults,
+					ReadonlyArray.reduce(Tuple.make(template, 0), ([template, offset], [tokenValueIndex, searchResult]) =>
+						pipe(
+							tokenValues,
+							ReadonlyArray.get(tokenValueIndex),
+							Option.map((replacement) =>
+								Tuple.make(
+									replaceBetween(
+										replacement,
+										searchResult.startIndex + offset,
+										searchResult.endIndex + offset
+									)(template),
+									offset + replacement.length - searchResult.match.length
+								)
 							),
-							ReadonlyArray.headNonEmpty
+							Option.getOrElse(() => Tuple.make(template, offset))
 						)
 					),
-					ReadonlyArray.groupWith(([selfI], [thatI]) => selfI === thatI),
-					ReadonlyArray.map((arr) => Tuple.make(ReadonlyArray.headNonEmpty(arr)[0], arr))
+					Tuple.getFirst
 				)
-			),
-			(z) => z
-		) as never;
+		);
+		return (tokenValues) => replacer(self, tokenValues);
+	};
