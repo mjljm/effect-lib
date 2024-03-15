@@ -1,7 +1,7 @@
+import * as MBadArgumentError from '#mjljm/effect-lib/BadArgumentError';
 import * as MFunction from '#mjljm/effect-lib/Function';
 import { MReadonlyArray, MString } from '#mjljm/effect-lib/index';
-import { Function, Option, Order, ReadonlyArray, String, Tuple, pipe } from 'effect';
-import { inspect } from 'util';
+import { Either, Function, Option, Order, ReadonlyArray, String, Tuple, pipe } from 'effect';
 
 //const moduleTag = '@mjljm/effect-lib/effect/String/';
 
@@ -204,15 +204,15 @@ export const replaceBetween = (replacement: string, startIndex: number, endIndex
 	self.substring(0, startIndex) + replacement + self.substring(endIndex);
 
 /**
- * Finds the position of tokens inside a template string.
- * @param self a template in which tokens will be searched.
- * @param tokens an array containing the tokens to find. Each token can appear between 0 and n times in self. Tokens can overlap, e.g `falling-tree`, `tree`, `tree-shaking`. In this case, the foremost and longest token takes precedence. For instance, in the template `this bundler is good at tree-shaking`, although `tree` and `tree-shaking` are present at the same position, the longest token `tree-shaking` will take precedence and impose its value.
- * @returns a list of the found tokens in the form of a tuple. The first element of the tuple indicates the token index in tokens. The second is a searchResult indicating the startIndex and endIndex of the token in self. The list is ordered by startIndex of the matches.
+ * Splits a template string at the boundary of tokens provided in a list. Function used internally by templateWrite and templateRead.
+ * @param self a template in which tokens will be searched. Each token can appear between 0 and n times in self. Tokens can overlap, e.g `falling-tree`, `tree`, `tree-shaking`. In this case, the foremost and longest token takes precedence. For instance, in the template `this bundler is good at tree-shaking`, although `tree` and `tree-shaking` are present at the same position, the longest token `tree-shaking` will take precedence and impose its value.
+ * @param tokens an array containing the tokens to find.
+ * @returns return an array containing for each found token, the static text between the end of the previous token (or the start of the template if there is no previous token) and the start of the current one (static text), and the index of the matching token (tokenIndex). Also returns the final text, between the end of the final token and the end of the template.
  */
-const internalGetTemplateStructure = (
+const chopTemplate = (
 	template: string,
 	tokens: ReadonlyArray<string>
-): [Array<[staticText: string, tokenValueIndex: number]>, finalStaticText: string] =>
+): [Array<[staticText: string, tokenIndex: number]>, finalStaticText: string] =>
 	pipe(
 		tokens,
 		ReadonlyArray.map(Function.flip(searchAll)(template)),
@@ -242,19 +242,19 @@ const internalGetTemplateStructure = (
 
 /**
  * Simple templating function that replaces tokens in a string by the values of those tokens
- * @param self a template in which tokens will be searched and replaced.
- * @param tokens an array containing the tokens to replace. Each token can appear between 0 and n times in self. Tokens can overlap, e.g `falling-tree`, `tree`, `tree-shaking`. In this case, te foremost and longest token takes precedence. For instance, in the template `this bundler is good at tree-shaking`, although `tree` and `tree-shaking` are present at the same position, the longest token `tree-shaking` will take precedence and impose its value.
- * @returns a compiled function that takes an array of values (in the same order as the tokens) and returns self where each token has been replaced by its value. If the array of values contains less entries than the array of tokens, the extra tokens will not be replaced. If it contains more entries, the extra values are ignored.
+ * @param self a template in which tokens will be searched and replaced. Each token can appear between 0 and n times in self. Tokens can overlap, e.g `falling-tree`, `tree`, `tree-shaking`. In this case, the foremost and longest token takes precedence. For instance, in the template `this bundler is good at tree-shaking`, although `tree` and `tree-shaking` are present at the same position, the longest token `tree-shaking` will take precedence and impose its value.
+ * @param tokens an array containing the tokens to replace.
+ * @returns a compiled function that takes an array of values (in the same order as the tokens) and returns self where each token has been replaced by its value. If the array of values contains less entries than the array of tokens, the extra tokens will not be replaced by an empty string. If it contains more entries, the extra values are ignored.
  **/
 
 export const templateWrite =
 	(tokens: ReadonlyArray<string>) =>
 	(self: string): ((tokenValues: ReadonlyArray<string>) => string) => {
-		const templateStructure = internalGetTemplateStructure(self, tokens);
-		console.log(inspect(templateStructure, { depth: +Infinity }));
+		const templateParts = chopTemplate(self, tokens);
+
 		return (tokenValues) =>
 			pipe(
-				templateStructure,
+				templateParts,
 				Tuple.getFirst,
 				ReadonlyArray.map(([staticText, tokenValueIndex]) =>
 					pipe(
@@ -265,42 +265,35 @@ export const templateWrite =
 					)
 				),
 				ReadonlyArray.join(''),
-				String.concat(templateStructure[1])
+				String.concat(templateParts[1])
 			);
 	};
 
 /**
- * Simple templating function that replaces tokens in a string by the values of those tokens
- * @param self a template in which tokens will be searched and replaced.
- * @param tokens an array containing the tokens to replace. Each token can appear between 0 and n times in self. Tokens can overlap, e.g `falling-tree`, `tree`, `tree-shaking`. In this case, te foremost and longest token takes precedence. For instance, in the template `this bundler is good at tree-shaking`, although `tree` and `tree-shaking` are present at the same position, the longest token `tree-shaking` will take precedence and impose its value.
- * @returns a compiled function that takes an array of values (in the same order as the tokens) and returns self where each token has been replaced by its value. If the array of values contains less entries than the array of tokens, the extra tokens will not be replaced. If it contains more entries, the extra values are ignored.
+ * Simple templating function that tries to read data from a template
+ * @param self a template in which tokens indicate where to read the data. Each token can appear between 0 and n times in self. Tokens can overlap, e.g `falling-tree`, `tree`, `tree-shaking`. In this case, the foremost and longest token takes precedence. For instance, in the template `this bundler is good at tree-shaking`, although `tree` and `tree-shaking` are present at the same position, the longest token `tree-shaking` will take precedence and impose its value.
+ * @param tokens an array containing the text of the tokens to search (tokenId) in the themplate and a regular expression describing the shape of the data to read (tokenPattern). The tokenIds indicate the start position of the data to read, the tokenPatterns the amount of data to read from that position.
+ * @returns a compiled function that takes a template that must comply with self and returns the value read at each token position. Returns an error if template does not comply with self, or if there are conflicting values for the same token
  **/
 
-/*export const templateRead =
+export const templateRead =
 	(tokens: ReadonlyArray<[tokenId: string, tokenPattern: RegExp]>) =>
-	(self: string): ((template: string) => ReadonlyArray<string>) => {
-		const indexedSearchResults = internalFindTemplateTokens(self, pipe(tokens, ReadonlyArray.map(Tuple.getFirst)));
+	(self: string): ((template: string) => Either.Either<ReadonlyArray<string>, MBadArgumentError.Other>) => {
+		const templateParts = chopTemplate(self, ReadonlyArray.map(tokens, Tuple.getFirst));
 
 		return (template) =>
 			pipe(
-				indexedSearchResults,
-				ReadonlyArray.reduce(Tuple.make(self, 0), ([template, offset], [tokenValueIndex, searchResult]) =>
+				templateParts,
+				Tuple.getFirst,
+				ReadonlyArray.map(([staticText, tokenValueIndex]) =>
 					pipe(
 						tokenValues,
 						ReadonlyArray.get(tokenValueIndex),
-						Option.map((replacement) =>
-							Tuple.make(
-								replaceBetween(
-									replacement,
-									searchResult.startIndex + offset,
-									searchResult.endIndex + offset
-								)(template),
-								offset + replacement.length - searchResult.match.length
-							)
-						),
-						Option.getOrElse(() => Tuple.make(template, offset))
+						Option.getOrElse(() => ''),
+						MString.prepend(staticText)
 					)
 				),
-				Tuple.getFirst
+				ReadonlyArray.join(''),
+				String.concat(templateParts[1])
 			);
-	};*/
+	};

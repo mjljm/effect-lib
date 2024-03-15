@@ -25,6 +25,6 @@ export class OutOfRange extends Data.TaggedError('OutOfRange')<{
 /**
  * OtherBadArgument signals any other bad argument error
  */
-export class OtherBadArgument extends Data.TaggedError('OtherBadArgument')<{
+export class Other extends Data.TaggedError('OtherBadArgument')<{
 	readonly message: string;
 }> {}
