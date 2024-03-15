@@ -32,6 +32,11 @@ export const hasDuplicatesWith =
 export const hasDuplicates = hasDuplicatesWith(Equal.equivalence());
 
 /**
+ * Returns true if self contains a single element
+ */
+export const isSingleton = (self: ReadonlyArray<unknown>): boolean => self.length === 1;
+
+/**
  * Returns none if self contains zero or more than one element. Returns a some of the only element of the array otherwise.
  *
  * @category getters

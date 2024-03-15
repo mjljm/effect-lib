@@ -1,4 +1,4 @@
-import { MEqValue } from '#mjljm/effect-lib/index';
+import * as MEqValue from '#mjljm/effect-lib/EqValue';
 import { JsTypes } from '@mjljm/js-lib';
 import {
 	Equal,
