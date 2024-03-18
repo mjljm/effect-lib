@@ -1,6 +1,8 @@
-import { MBadArgumentError } from '#mjljm/effect-lib/index';
+import { MBadArgumentError, MEither } from '#mjljm/effect-lib/index';
 import { JsPatches } from '@mjljm/js-lib';
-import { Either, Number, Option, Predicate, pipe } from 'effect';
+import { Either, Number, Predicate, pipe } from 'effect';
+
+const moduleTag = '@mjljm/effect-lib/effect/date/';
 
 /**
  * Model
@@ -83,9 +85,17 @@ const checkRange = (
 ): Either.Either<number, MBadArgumentError.OutOfRange> =>
 	pipe(
 		value,
-		Option.liftPredicate(Predicate.and(Number.greaterThanOrEqualTo(min), Number.lessThanOrEqualTo(max))),
-		Either.fromOption(
-			() => new MBadArgumentError.OutOfRange({ actual: value, min, max, message: `Invalid ${label} range` })
+		MEither.liftPredicate(
+			Predicate.and(Number.greaterThanOrEqualTo(min), Number.lessThanOrEqualTo(max)),
+			() =>
+				new MBadArgumentError.OutOfRange({
+					id: label,
+					moduleTag,
+					functionName: 'checkRange',
+					actual: value,
+					min,
+					max
+				})
 		)
 	);
 

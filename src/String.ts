@@ -227,3 +227,8 @@ export const prepend =
  */
 export const replaceBetween = (replacement: string, startIndex: number, endIndex: number) => (self: string) =>
 	self.substring(0, startIndex) + replacement + self.substring(endIndex);
+
+export const applyRegExp =
+	(regexp: RegExp) =>
+	(self: string): Option.Option<RegExpExecArray> =>
+		pipe(regexp.exec(self), Option.fromNullable);

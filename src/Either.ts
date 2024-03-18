@@ -1,18 +1,44 @@
-import { Cause, Either, Option, Tuple, pipe } from 'effect';
+import { Cause, Either, Option, Predicate, pipe } from 'effect';
 
 /**
- * Takes a value a of type A and a function that optionnally returns an error B when passed an A. Returns a right of a if there is no error. Otherwise, returns a left containing the original value a and the calculated error of type B.
+ * Lifts a value r to a right if predicate returns true. If predicate returns false, it lifts r to a left that is calculated from itself by orLeftWith
  */
-export const liftOptionalError =
-	<A, B>(f: (a: NoInfer<A>) => Option.Option<B>) =>
-	(a: A): Either.Either<A, [B, A]> =>
+
+export const liftPredicate: {
+	// Note: I intentionally avoid using the NoInfer pattern here.
+	<R, R1 extends R, L>(
+		refinement: Predicate.Refinement<R, R1>,
+		orLeftWith: (r: R) => L
+	): (r: R) => Either.Either<R1, L>;
+	<R, L>(predicate: Predicate.Predicate<R>, orLeftWith: (r: R) => L): (r: R) => Either.Either<R, L>;
+} =
+	<R, L>(predicate: Predicate.Predicate<R>, orLeftWith: (r: R) => L) =>
+	(r: R): Either.Either<R, L> =>
+		predicate(r) ? Either.right(r) : Either.left(orLeftWith(r));
+
+/**
+ * Lifts a value r to a right if f applied to r returns a none. If it returns a some(c), it lifts r to a left that is calculated from itself and c
+ */
+// Note: I intentionally avoid using the NoInfer pattern here.
+export const liftOptionalPredicate =
+	<R, L, C>(f: (r: R) => Option.Option<C>, orLeftWith: (right: R, calculation: C) => L) =>
+	(r: R): Either.Either<R, L> =>
 		pipe(
-			a,
+			r,
 			f,
-			Either.fromOption(() => a),
-			Either.map((b) => Tuple.make(b, a)),
+			Option.map((c) => orLeftWith(r, c)),
+			Either.fromOption(() => r),
 			Either.flip
 		);
+
+/**
+ * Same as Either.filterOrLeft but we pass the details of the filtering calculation to the orLeftWithFunction. If the filtering function returns a none, the either is validated. If it returns a some(c), the either is not validated and c is passed to the orLeftWith function
+ */
+export const filterOptionalPredicate =
+	<R, L2, C>(f: (r: NoInfer<R>) => Option.Option<C>, orLeftWith: (right: NoInfer<R>, calculation: C) => L2) =>
+	<L>(self: Either.Either<R, L>): Either.Either<R, L2 | L> =>
+		Either.flatMap(self, liftOptionalPredicate(f, orLeftWith));
+
 /**
  * gets the value of the Either when it can never be a left
  */

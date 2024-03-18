@@ -1,4 +1,4 @@
-import { MNumber } from '#mjljm/effect-lib/index';
+import { MEither, MNumber } from '#mjljm/effect-lib/index';
 import { Chunk, Either, Function, Number, Option, Predicate, flow, pipe } from 'effect';
 
 /**
@@ -29,8 +29,7 @@ export const getSingletonOrFailsWith =
 	<A>(self: Chunk.Chunk<A>): Either.Either<Option.Option<A>, B> =>
 		pipe(
 			self,
-			Option.liftPredicate(flow(Chunk.size, Number.lessThanOrEqualTo(1))),
-			Either.fromOption(error),
+			MEither.liftPredicate(flow(Chunk.size, Number.lessThanOrEqualTo(1)), error),
 			Either.map(Chunk.get(0))
 		);
 

@@ -8,6 +8,10 @@ interface BaseType {
 	readonly functionName: string;
 }
 
+const argumentString = (self: BaseType): string =>
+	`Argument '${self.id}'` + (self.position === undefined ? '' : ` at position ${self.position}`);
+
+export const mapId = <B extends BaseType>(self: B, f: (id: string) => string): B => ({ ...self, id: f(self.id) });
 /**
  * OutOfRange signals an out-of-range error
  */
@@ -23,7 +27,7 @@ export interface OutOfRangeType extends BaseType {
 
 export class OutOfRange extends Data.TaggedError('BadArgumentOutOfRange')<OutOfRangeType> {
 	override get message() {
-		return `Argument '${this.id}' is out of range. Actual:${this.actual}, expected: integer between ${this.min} included and ${this.max} included.`;
+		return `${argumentString(this)} is out of range. Actual:${this.actual}, expected: integer between ${this.min} included and ${this.max} included.`;
 	}
 }
 
@@ -40,7 +44,7 @@ export interface BadLengthType extends BaseType {
 
 export class BadLength extends Data.TaggedError('BadArgumentBadLength')<BadLengthType> {
 	override get message() {
-		return `Argument '${this.id} does not have expected size'. Actual:${this.actual}, expected: ${this.expected}.`;
+		return `${argumentString(this)} does not have expected size'. Actual:${this.actual}, expected: ${this.expected}.`;
 	}
 }
 
@@ -49,15 +53,15 @@ export class BadLength extends Data.TaggedError('BadArgumentBadLength')<BadLengt
  */
 
 export interface TooManyType extends BaseType {
-	// Number of received values
-	readonly actual: number;
-	// Number of expected values
-	readonly expected: number;
+	// The latest value received
+	readonly actual: string;
+	// The previous value received
+	readonly expected: string;
 }
 
 export class TooMany extends Data.TaggedError('BadArgumentTooMany')<TooManyType> {
 	override get message() {
-		return `Argument '${this.id} received too many values'. Received:${this.actual}, expected: ${this.expected}.`;
+		return `${argumentString(this)} received value:${this.actual} that contradicts previously received value:${this.expected}.`;
 	}
 }
 
@@ -74,7 +78,7 @@ export interface BadFormatType extends BaseType {
 
 export class BadFormat extends Data.TaggedError('BadArgumentBadFormat')<BadFormatType> {
 	override get message() {
-		return `Data in argument '${this.id}' does not match expected format. Received:${this.actual}, expected format: ${this.expected}.`;
+		return `${argumentString(this)} does not match expected format. Received:${this.actual}, expected format: ${this.expected}.`;
 	}
 }
 

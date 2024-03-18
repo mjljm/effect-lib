@@ -321,14 +321,19 @@ export const ifElse: {
 /**
  * Flips a dual function
  */
-export const flipDual =
-	<Args extends ReadonlyArray<unknown>>(f: {
-		(...args: Args): (self: unknown) => unknown;
-		(self: unknown, ...args: Args): unknown;
-	}) =>
-	(self: unknown) =>
-	(...args: Args) =>
-		f(...args)(self);
+/*type DataLastFunction<A, B extends ReadonlyArray<unknown>, C> = (self: A) => (...b: B) => C;
+
+type DualFunction<A, B extends ReadonlyArray<unknown>, C extends B,C> = {
+	(...b: B): (self: A) => C;
+	(self: A, ...b: B): C;
+};
+export const flipDual: <A, B extends ReadonlyArray<unknown>, C>(
+	f: DualFunction<A, B, C>
+) => DataLastFunction<A, B, C> =
+	<A, B extends ReadonlyArray<unknown>, C>(f: DualFunction<A, B, C>): DataLastFunction<A, B, C> =>
+	(self: A) =>
+	(...b: B) =>
+		f(...b)(self);*/
 
 /**
  * Type that expands a type

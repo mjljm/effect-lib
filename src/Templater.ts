@@ -4,9 +4,9 @@
 
 import * as MBadArgumentError from '#mjljm/effect-lib/BadArgumentError';
 import * as MReadonlyArray from '#mjljm/effect-lib/ReadonlyArray';
-import { MEither, MString } from '#mjljm/effect-lib/index';
-import { Either, Function, Number, Option, Order, ReadonlyArray, String, Tuple, pipe } from 'effect';
-import { compose, flow } from 'effect/Function';
+import { MEither, MString, MTuple } from '#mjljm/effect-lib/index';
+import { Either, Function, Option, Order, ReadonlyArray, String, Tuple, pipe } from 'effect';
+import { flow } from 'effect/Function';
 
 const moduleTag = '@mjljm/effect-lib/effect/Template/';
 
@@ -63,8 +63,8 @@ export const write =
 	(tokenValues: ReadonlyArray<string>): Either.Either<string, MBadArgumentError.BadLength> =>
 		pipe(
 			self.textAndTokenArray,
-			Option.liftPredicate(() => tokenValues.length === self.tokens.length),
-			Either.fromOption(
+			MEither.liftPredicate(
+				() => tokenValues.length === self.tokens.length,
 				() =>
 					new MBadArgumentError.BadLength({
 						id: 'tokenValues',
@@ -91,41 +91,20 @@ export const write =
  **/
 
 export const read =
-	(self: Type) =>
+	(self: Type, tokenPatterns: ReadonlyArray<RegExp>) =>
 	(
-		filledOutTemplate: string,
-		tokenPatterns: ReadonlyArray<RegExp>
+		filledOutTemplate: string
 	): Either.Either<
 		ReadonlyArray<Option.Option<string>>,
-		MBadArgumentError.BadFormat | MBadArgumentError.BadLength | MBadArgumentError.TooMany
-	> => {
-		const stripStaticText =
-			(staticText: string, position: number) =>
-			(
-				leftToReadEither: Either.Either<string, MBadArgumentError.BadFormat>
-			): Either.Either<string, MBadArgumentError.BadFormat> =>
-				Either.flatMap(leftToReadEither, (leftToRead) =>
-					pipe(
-						leftToRead,
-						MString.stripLeftOption(staticText),
-						Either.fromOption(
-							() =>
-								new MBadArgumentError.BadFormat({
-									id: 'filledOutTemplate',
-									position,
-									moduleTag,
-									functionName: 'read',
-									actual: staticText,
-									expected: leftToRead.substring(0, staticText.length)
-								})
-						)
-					)
-				);
-
-		return pipe(
+		| MBadArgumentError.BadFormat
+		| MBadArgumentError.BadLength
+		| MBadArgumentError.TooMany
+		| MBadArgumentError.OutOfRange
+	> =>
+		pipe(
 			self.textAndTokenArray,
-			Option.liftPredicate(() => tokenPatterns.length === self.tokens.length),
-			Either.fromOption(
+			MEither.liftPredicate(
+				() => tokenPatterns.length === self.tokens.length,
 				() =>
 					new MBadArgumentError.BadLength({
 						id: 'tokenPatterns',
@@ -137,30 +116,63 @@ export const read =
 			),
 			Either.flatMap(
 				flow(
-					ReadonlyArray.map(({ staticText, tokenIndex }) =>
-						Tuple.make(staticText, tokenIndex, MReadonlyArray.unsafeGet(tokenIndex)(tokenPatterns))
-					),
 					ReadonlyArray.mapAccum(
 						Either.right(filledOutTemplate) as Either.Either<string, MBadArgumentError.BadFormat>,
-						(leftToReadEither, [staticText, tokenIndex, tokenPattern], position) =>
+						(leftToReadEither, { staticText, tokenIndex }, position) =>
 							pipe(
 								leftToReadEither,
-								stripStaticText(staticText, position),
-								Either.map((strippedOfStaticText) => {
-									const result = tokenPattern.exec(strippedOfStaticText);
-									const value = result ? result[0] : '';
-									return Tuple.make(
-										Either.right(strippedOfStaticText.substring(value.length)),
-										Tuple.make(tokenIndex, value)
-									);
-								}),
-								Either.getOrElse((left) => Tuple.make(Either.left(left), Tuple.make(tokenIndex, '')))
+								Either.flatMap((leftToRead) =>
+									pipe(
+										leftToRead,
+										MString.stripLeftOption(staticText),
+										Either.fromOption(
+											() =>
+												new MBadArgumentError.BadFormat({
+													id: 'filledOutTemplate',
+													position,
+													moduleTag,
+													functionName: 'read',
+													actual: leftToRead.substring(0, staticText.length),
+													expected: staticText
+												})
+										)
+									)
+								),
+								Either.map((strippedOfStaticText) =>
+									pipe(
+										strippedOfStaticText,
+										pipe(tokenPatterns, MReadonlyArray.unsafeGet(tokenIndex), MString.applyRegExp),
+										Option.map(MReadonlyArray.unsafeGet(0)),
+										Option.getOrElse(() => ''),
+										MTuple.makeBothBy(
+											flow(String.length, Function.flip(String.substring)(strippedOfStaticText), Either.right),
+											flow(Tuple.make, MTuple.prependElement(tokenIndex))
+										)
+									)
+								),
+								Either.getOrElse(MTuple.makeBothBy(Either.left, () => Tuple.make(tokenIndex, '')))
 							)
 					),
 					([leftToReadEither, values]) =>
 						pipe(
 							leftToReadEither,
-							stripStaticText(self.finalStaticText, self.textAndTokenArray.length - 1),
+							Either.flatMap((leftToRead) =>
+								pipe(
+									leftToRead,
+									MString.stripLeftOption(self.finalStaticText),
+									Either.fromOption(
+										() =>
+											new MBadArgumentError.BadFormat({
+												id: 'filledOutTemplate',
+												position: self.textAndTokenArray.length,
+												moduleTag,
+												functionName: 'read',
+												actual: leftToRead.substring(0, self.finalStaticText.length),
+												expected: self.finalStaticText
+											})
+									)
+								)
+							),
 							Either.filterOrLeft(
 								String.isEmpty,
 								(remnants) =>
@@ -177,26 +189,5 @@ export const read =
 						)
 				)
 			),
-			Either.flatMap(
-				flow(
-					MReadonlyArray.fromIndexedFlattened(self.tokens.length),
-					ReadonlyArray.map(ReadonlyArray.dedupe),
-					MEither.liftOptionalError(
-						ReadonlyArray.findFirstIndex(compose(ReadonlyArray.length, Number.greaterThan(1)))
-					),
-					Either.mapLeft(
-						([tokenIndex, values]) =>
-							new MBadArgumentError.TooMany({
-								id: pipe(self.tokens, MReadonlyArray.unsafeGet(tokenIndex)),
-								position: tokenIndex,
-								moduleTag,
-								functionName: 'read',
-								actual: pipe(values, MReadonlyArray.unsafeGet(tokenIndex), ReadonlyArray.length),
-								expected: 1
-							})
-					),
-					Either.map(ReadonlyArray.map(MReadonlyArray.getSingleton))
-				)
-			)
+			Either.flatMap(MReadonlyArray.fromUniqueIndexedFlattened(self.tokens.length))
 		);
-	};

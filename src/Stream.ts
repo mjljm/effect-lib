@@ -1,4 +1,5 @@
-import { Chunk, Data, Effect, Either, Option, ReadonlyArray, Stream, Tuple, pipe } from 'effect';
+import { MEither } from '#mjljm/effect-lib/index';
+import { Chunk, Data, Effect, ReadonlyArray, Stream, Tuple, pipe } from 'effect';
 
 export class StreamContentError extends Data.TaggedError('StreamContentError')<{
 	readonly message: string;
@@ -28,8 +29,8 @@ export const ExtractNBytes =
 				ReadonlyArray.fromIterable,
 				ReadonlyArray.flatten,
 				ReadonlyArray.splitAt(n),
-				Option.liftPredicate(([iv]) => iv.length >= n),
-				Either.fromOption(
+				MEither.liftPredicate(
+					([iv]) => iv.length >= n,
 					() =>
 						new StreamContentError({
 							message: 'IV vector could not be extracted. Stream must contain at least 16 bytes.'

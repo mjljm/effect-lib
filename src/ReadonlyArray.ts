@@ -1,4 +1,4 @@
-import { MNumber } from '#mjljm/effect-lib/index';
+import { MBadArgumentError, MEither, MNumber } from '#mjljm/effect-lib/index';
 import {
 	Either,
 	Equal,
@@ -13,6 +13,8 @@ import {
 	flow,
 	pipe
 } from 'effect';
+
+const moduleTag = '@mjljm/effect-lib/effect/ReadonlyArray/';
 
 /**
  * Returns true if the provided ReadonlyArray contains duplicates using the provided isEquivalent function
@@ -56,8 +58,7 @@ export const getSingletonOrFailsWith =
 	<A>(self: ReadonlyArray<A>): Either.Either<Option.Option<A>, B> =>
 		pipe(
 			self,
-			Option.liftPredicate(flow(ReadonlyArray.length, Number.lessThanOrEqualTo(1))),
-			Either.fromOption(error),
+			MEither.liftPredicate(flow(ReadonlyArray.length, Number.lessThanOrEqualTo(1)), error),
 			Either.map(ReadonlyArray.get(0))
 		);
 
@@ -171,7 +172,7 @@ export const validateAll =
 		);
 
 /**
- * Flattens an array of arrays of A's so as to apply an operation (sorting, filtering) on the internal elements but adds an index that will allow to come back to the original structure
+ * Flattens an array of arrays of A's adding an index that will allow to reverse this operation with fromIndexedFlattened
  */
 export const toIndexedFlattened = <A>(arr: ReadonlyArray<ReadonlyArray<A>>): ReadonlyArray<[number, A]> =>
 	pipe(
@@ -185,13 +186,83 @@ export const toIndexedFlattened = <A>(arr: ReadonlyArray<ReadonlyArray<A>>): Rea
  */
 export const fromIndexedFlattened =
 	(size: number) =>
-	<A>(flatIndexed: ReadonlyArray<[number, A]>): ReadonlyArray<ReadonlyArray<A>> => {
-		const out = ReadonlyArray.makeBy(size, () => ReadonlyArray.empty<A>());
-		for (const [index, value] of flatIndexed) {
-			if (index >= 0 && index < size) (out[index] as Array<A>).push(value);
-		}
-		return out;
-	};
+	<A>(
+		self: ReadonlyArray<[number, A]>
+	): Either.Either<ReadonlyArray<ReadonlyArray<A>>, MBadArgumentError.OutOfRange> =>
+		Either.gen(function* (_) {
+			const out = ReadonlyArray.makeBy(size, () => ReadonlyArray.empty<A>());
+			for (let i = 0; i < self.length; i++) {
+				const [index, value] = self[i] as [number, A];
+				const checkedIndex = yield* _(
+					index,
+					MEither.liftPredicate(
+						Predicate.and(Number.greaterThanOrEqualTo(0), Number.lessThan(size)),
+						(index) =>
+							new MBadArgumentError.OutOfRange({
+								id: 'self',
+								position: i,
+								moduleTag,
+								functionName: 'fromIndexedFlattened',
+								actual: index,
+								min: 0,
+								max: size - 1
+							})
+					)
+				);
+				(out[checkedIndex] as Array<A>).push(value);
+			}
+			return out;
+		});
+
+/**
+ * Same as fromIndexedFlattened but checks that there is at most one element per sub-array and flattens the final array
+ */
+export const fromUniqueIndexedFlattened =
+	(size: number) =>
+	<A>(
+		self: ReadonlyArray<[number, A]>
+	): Either.Either<ReadonlyArray<Option.Option<A>>, MBadArgumentError.OutOfRange | MBadArgumentError.TooMany> =>
+		Either.gen(function* (_) {
+			const out = ReadonlyArray.makeBy(size, () => Option.none<A>());
+			for (let i = 0; i < self.length; i++) {
+				const [index, value] = self[i] as [number, A];
+				const checkedIndex = yield* _(
+					index,
+					MEither.liftPredicate(
+						Predicate.and(Number.greaterThanOrEqualTo(0), Number.lessThan(size)),
+						(index) =>
+							new MBadArgumentError.OutOfRange({
+								id: 'self',
+								position: i,
+								moduleTag,
+								functionName: 'fromUniqueIndexedFlattened',
+								actual: index,
+								min: 0,
+								max: size - 1
+							})
+					)
+				);
+
+				out[checkedIndex] = Option.some(
+					yield* _(
+						value,
+						MEither.liftOptionalPredicate(
+							(value) => Option.filter(out[checkedIndex] as Option.Option<A>, Predicate.not(Equal.equals(value))),
+							(newValue, previousValue) =>
+								new MBadArgumentError.TooMany({
+									id: 'self',
+									position: i,
+									moduleTag,
+									functionName: 'fromUniqueIndexedFlattened',
+									actual: String(newValue),
+									expected: String(previousValue)
+								})
+						)
+					)
+				);
+			}
+			return out;
+		}) as never;
 
 /**
  * Same as ReadonlyArray.groupBy but with a value projection function
