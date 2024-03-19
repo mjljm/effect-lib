@@ -1,4 +1,6 @@
-import { Option } from 'effect';
+import { MBadArgumentError } from '#mjljm/effect-lib/index';
+import { JsPatches } from '@mjljm/js-lib';
+import { Cause, Either, Function, Option, pipe } from 'effect';
 
 const moduleTag = '@mjljm/effect-lib/effect/Date/';
 
@@ -64,31 +66,71 @@ const leapYearMonths = [
 	{ nbDaysInMonth: 31, monthStartMs: 31622400000 }
 ];
 
+// time in ms between the start of the year at 00:00:00:000+00:00 and the start of the month at 00:00:00:000+00:00
+//readonly monthStartMs: number;
+//readonly firstDayOfYearWeekDay: Option.Option<number>;
+// time in ms between the start of the year at 00:00:00:000+00:00 and the start of the first iso week of the year at 00:00:00:000+00:00
+//readonly firstIsoWeekOffsetMs: Option.Option<number>;
+// time in ms between the start of the first iso week of the year at 00:00:00:000+00:00 and the start of the week at 00:00:00:000+00:00
+//readonly isoWeekStartMs: Option.Option<number>;
+
 /**
  * Model
  */
+export interface YearData {
+	// range: MIN_FULL_YEAR..MAX_FULL_YEAR
+	readonly year: number;
+	readonly isLeapYear: boolean;
+	// timestamp of the start of the year at 00:00:00:000+00:00
+	readonly yearStartMs: number;
+	// same as above but modulo 400 years. Serves for calculation of the week day of the first day of the year as adding 400 years to a date does not change the week day
+	readonly yearStartMsModulo400Y: number;
+}
 
+/**
+ * Model
+ */
+export interface MonthAndMonthDayData {
+	// range:1..12
+	readonly month: number;
+	//range:1..31
+	readonly monthDay: number;
+}
+
+/**
+ * Model
+ */
+export interface WeekAndWeekDayData {
+	// range:1..53
+	readonly isoWeek: number;
+	// range:1..7, 1 is monday, 7 is sunday
+	readonly weekDay: number;
+}
+
+/**
+ * Model
+ */
+export interface Hour12AndMeridiem {
+	// range:0..11
+	readonly hour12: number;
+	// meridiem offset in hours (0 for 'AM', 12 for 'PM')
+	readonly meridiem: 0 | 12;
+}
+
+/**
+ * Model
+ */
 export interface Type {
 	// ms since 1/1/1970 at 00:00:00:000+00:00
 	readonly timestamp: Option.Option<number>;
-	// range: MIN_FULL_YEAR..MAX_FULL_YEAR
-	readonly year: Option.Option<number>;
+	readonly yearData: Option.Option<YearData>;
 	// range:1..366
 	readonly ordinalDay: Option.Option<number>;
-	// range:1..12
-	readonly month: Option.Option<number>;
-	//range:1..31
-	readonly monthDay: Option.Option<number>;
-	// range:1..53
-	readonly isoWeek: Option.Option<number>;
-	// range:1..7, 1 is monday, 7 is sunday
-	readonly weekDay: Option.Option<number>;
+	readonly monthAndMonthDayData: Option.Option<MonthAndMonthDayData>;
+	readonly weekAndWeekDayData: Option.Option<WeekAndWeekDayData>;
 	// range:0..23
 	readonly hour24: Option.Option<number>;
-	// range:0..11
-	readonly hour12: Option.Option<number>;
-	// meridiem offset in hours (0 for 'AM', 12 for 'PM')
-	readonly meridiem: Option.Option<0 | 12>;
+	readonly hour12AndMeridiem: Option.Option<Hour12AndMeridiem>;
 	// range:0..59
 	readonly minute: Option.Option<number>;
 	// range:0..59
@@ -97,18 +139,6 @@ export interface Type {
 	readonly millisecond: Option.Option<number>;
 	// range: -12..14 in hours
 	readonly timeZoneOffset: Option.Option<number>;
-	readonly isLeapYear: Option.Option<boolean>;
-	// timestamp of the start of the year at 00:00:00:000+00:00
-	readonly yearStartMs: Option.Option<number>;
-	// same as above but modulo 400 years. Serves for calculation of the week day of the first day of the year as adding 400 years to a date does not change the week day
-	readonly yearStartMsModulo400Y: Option.Option<number>;
-	readonly firstDayOfYearWeekDay: Option.Option<number>;
-	// time in ms between the start of the year at 00:00:00:000+00:00 and the start of the first iso week of the year at 00:00:00:000+00:00
-	readonly firstIsoWeekOffsetMs: Option.Option<number>;
-	// time in ms between the start of the year at 00:00:00:000+00:00 and the start of the month at 00:00:00:000+00:00
-	readonly monthStartMs: Option.Option<number>;
-	// time in ms between the start of the first iso week of the year at 00:00:00:000+00:00 and the start of the week at 00:00:00:000+00:00
-	readonly isoWeekStartMs: Option.Option<number>;
 	// timestamp of the current day at 00:00:00:000+00:00
 	readonly dayMs: Option.Option<number>;
 	// time in ms between the start of the day at 00:00:00:000+00:00 and the start of the hour at 00:00:000+00:00
@@ -117,430 +147,549 @@ export interface Type {
 	readonly minuteMs: Option.Option<number>;
 	// time in ms between the start of the minute at 00:000+00:00 and the start of the second at 000+00:00
 	readonly secondMs: Option.Option<number>;
-	readonly millisecondMs: Option.Option<number>;
 	// time in ms between 1/1/1970 at 00:00:00:000+00:00 and 1/1/1970 at 00:00:00:000 in the specified time zone
 	readonly timeZoneOffsetMs: Option.Option<number>;
 }
 
-export const makeFromTimestamp = (timestamp: number): Type => ({
-	timestamp: Option.some(timestamp),
-	year: Option.none(),
+/**
+ * returns the number of days in a year
+ */
+const getNbDaysInYear = (isLeapYear: boolean): number => (isLeapYear ? 366 : 365);
+
+/**
+ * Calculates the week day of a timestamp. Calculation is based on the fact that 4/1/1970 was a sunday.
+ */
+const getWeekDay = (timestamp: number): number => {
+	const weekDay0 = JsPatches.intModulo(7)(Math.floor(timestamp / DAY_MS - 3));
+	return weekDay0 === 0 ? 7 : weekDay0;
+};
+
+/**
+ * Offset in ms between the 1st day of the year at 00:00:00:000+00:00 and the first day of the first iso week of the year at 00:00:00:000+00:00. No input parameters check!
+ */
+const unsafeGetFirstIsoWeekMs = (firstDayOfYearWeekDay: number): number =>
+	(firstDayOfYearWeekDay <= 4 ? 1 - firstDayOfYearWeekDay : 8 - firstDayOfYearWeekDay) * DAY_MS;
+
+/**
+ * Determines if an iso year is long (53 weeks) or short (52 weeks). No input parameters check!
+ */
+const unsafeIsLongIsoYear = (firstDayOfYearWeekDay: number, isLeapYear: boolean): boolean =>
+	firstDayOfYearWeekDay === 4 || (firstDayOfYearWeekDay === 3 && isLeapYear);
+
+/**
+ * Calculates the number of iso weeks in a year. No input parameters check!
+ */
+const unsafeGetNbIsoWeeksInYear = (firstDayOfYearWeekDay: number, isLeapYear: boolean): number =>
+	unsafeIsLongIsoYear(firstDayOfYearWeekDay, isLeapYear) ? 53 : 52;
+
+/**
+ * Calculates yearData from a year. No input parameters check
+ */
+const unsafeCalcYearData = (year: number): YearData => {
+	// 2001 is the start of a 400-year period whose last year is bissextile
+	const offset2001 = year - 2001;
+	const q400Years = Math.floor(offset2001 / 400);
+	const offset400Years = q400Years * 400;
+	const r400Years = offset2001 - offset400Years;
+	const q100Years = Math.floor(r400Years / 100);
+	const offset100Years = q100Years * 100;
+	const r100Years = r400Years - offset100Years;
+	const q4Years = Math.floor(r100Years / 4);
+	const offset4Years = q4Years * 4;
+	const r4Years = r100Years - offset4Years;
+
+	const isLeapYear = r4Years === 3 && (r100Years !== 99 || r400Years === 399);
+	const yearStartMsModulo400Y = q100Years * HUNDRED_YEARS_MS + q4Years * FOUR_YEARS_MS + r4Years * NORMAL_YEAR_MS;
+	const yearStartMs = q400Years * FOUR_HUNDRED_YEARS_MS + yearStartMsModulo400Y;
+
+	return {
+		year,
+		isLeapYear,
+		yearStartMs,
+		yearStartMsModulo400Y
+	};
+};
+
+/**
+ * Calculates yearData from a year
+ */
+const calcYearData = (year: number): Either.Either<YearData, MBadArgumentError.OutOfRange> =>
+	pipe(
+		MBadArgumentError.checkRange({
+			actual: year,
+			min: MIN_FULL_YEAR,
+			max: MAX_FULL_YEAR,
+			id: 'year',
+			moduleTag,
+			functionName: 'setYear'
+		}),
+		Either.map(unsafeCalcYearData)
+	);
+
+/**
+ * Creates an empty Date
+ */
+export const empty = (): Type => ({
+	timestamp: Option.none(),
+	yearData: Option.none(),
 	ordinalDay: Option.none(),
-	month: Option.none(),
-	monthDay: Option.none(),
-	isoWeek: Option.none(),
-	weekDay: Option.none(),
+	monthAndMonthDayData: Option.none(),
+	weekAndWeekDayData: Option.none(),
 	hour24: Option.none(),
-	hour12: Option.none(),
-	meridiem: Option.none(),
+	hour12AndMeridiem: Option.none(),
 	minute: Option.none(),
 	second: Option.none(),
 	millisecond: Option.none(),
 	timeZoneOffset: Option.none(),
-	isLeapYear: Option.none(),
-	yearStartMs: Option.none(),
-	yearStartMsModulo400Y: Option.none(),
-	firstDayOfYearWeekDay: Option.none(),
-	firstIsoWeekOffsetMs: Option.none(),
-	monthStartMs: Option.none(),
-	isoWeekStartMs: Option.none(),
 	dayMs: Option.none(),
 	hourMs: Option.none(),
 	minuteMs: Option.none(),
 	secondMs: Option.none(),
-	millisecondMs: Option.none(),
 	timeZoneOffsetMs: Option.none()
 });
 
-export const setYear =
-	(year: number) =>
-	(self: Type): Type => ({
-		timestamp: Option.none(),
-		year: Option.some(year),
-		ordinalDay: self.ordinalDay,
-		month: self.month,
-		monthDay: self.monthDay,
-		isoWeek: self.isoWeek,
-		weekDay: self.weekDay,
-		hour24: self.hour24,
-		hour12: self.hour12,
-		meridiem: self.meridiem,
-		minute: self.minute,
-		second: self.second,
-		millisecond: self.millisecond,
-		timeZoneOffset: self.timeZoneOffset,
-		isLeapYear: Option.none(),
-		yearStartMs: Option.none(),
-		yearStartMsModulo400Y: Option.none(),
-		firstDayOfYearWeekDay: Option.none(),
-		firstIsoWeekOffsetMs: Option.none(),
-		monthStartMs: Option.none(),
-		isoWeekStartMs: self.isoWeekStartMs,
-		dayMs: Option.none(),
-		hourMs: self.hourMs,
-		minuteMs: self.minuteMs,
-		secondMs: self.secondMs,
-		millisecondMs: self.millisecondMs,
-		timeZoneOffsetMs: self.timeZoneOffsetMs
+/**
+ * Creates a date from a timestamp. No input parameters check
+ */
+export const unsafeMakeFromTimestamp = (timestamp: number, timeZoneOffset: number): Type => {
+	const timeZoneOffsetMs = -timeZoneOffset * HOUR_MS;
+	// 2001 is the start of a 400-year period whose last year is bissextile
+	const offset2001 = timestamp - YEAR_START_2001_MS + timeZoneOffsetMs;
+
+	const q400Years = Math.floor(offset2001 / FOUR_HUNDRED_YEARS_MS);
+	const offset400Years = q400Years * FOUR_HUNDRED_YEARS_MS;
+	const r400Years = offset2001 - offset400Years;
+
+	const q100Years = Math.floor(r400Years / HUNDRED_YEARS_MS);
+	const offset100Years = q100Years * HUNDRED_YEARS_MS;
+	const r100Years = r400Years - offset100Years;
+
+	const q4Years = Math.floor(r100Years / FOUR_YEARS_MS);
+	const offset4Years = q4Years * FOUR_YEARS_MS;
+	const r4Years = r100Years - offset4Years;
+
+	const q1Year = Math.floor(r4Years / NORMAL_YEAR_MS);
+	const offset1Year = q1Year * NORMAL_YEAR_MS;
+	const r1Year = r4Years - offset1Year;
+
+	const year = 2001 + 400 * q400Years + 100 * q100Years + 4 * q4Years + q1Year;
+	const isLeapYear = q1Year === 3 && (q4Years !== 24 || q100Years === 3);
+	const yearStartMsModulo400Y = YEAR_START_2001_MS + offset100Years + offset4Years + offset1Year;
+	const yearStartMs = yearStartMsModulo400Y + offset400Years;
+
+	const ordinalDay0 = Math.floor(r1Year / DAY_MS);
+	const offsetOrdinalDay = ordinalDay0 * DAY_MS;
+	const dayMs = yearStartMs + offsetOrdinalDay;
+	const rOrdinalDay0 = r1Year - offsetOrdinalDay;
+
+	const hour24 = Math.floor(rOrdinalDay0 / HOUR_MS);
+	const hourMs = hour24 * HOUR_MS;
+	const rHour24 = rOrdinalDay0 - hourMs;
+
+	const minute = Math.floor(rHour24 / MINUTE_MS);
+	const minuteMs = minute * MINUTE_MS;
+	const rMinute = rHour24 - minuteMs;
+
+	const second = Math.floor(rMinute / SECOND_MS);
+	const secondMs = second * SECOND_MS;
+	const millisecond = rMinute - secondMs;
+
+	return {
+		...empty(),
+		timestamp: Option.some(timestamp),
+		yearData: Option.some({
+			year,
+			isLeapYear,
+			yearStartMs: yearStartMs - timeZoneOffsetMs,
+			yearStartMsModulo400Y: yearStartMsModulo400Y - timeZoneOffsetMs
+		}),
+		ordinalDay: Option.some(ordinalDay0 + 1),
+		hour24: Option.some(hour24),
+		minute: Option.some(minute),
+		second: Option.some(second),
+		millisecond: Option.some(millisecond),
+		dayMs: Option.some(dayMs - timeZoneOffsetMs),
+		hourMs: Option.some(hourMs),
+		minuteMs: Option.some(minuteMs),
+		secondMs: Option.some(secondMs),
+		timeZoneOffsetMs: Option.some(timeZoneOffsetMs)
+	};
+};
+
+/**
+ * Creates a date from a timestamp.
+ */
+export const makeFromTimestamp = (
+	timestamp: number,
+	timeZoneOffset: number
+): Either.Either<Type, MBadArgumentError.OutOfRange> =>
+	Either.gen(function* (_) {
+		const checkedTimestamp = yield* _(
+			MBadArgumentError.checkRange({
+				actual: timestamp,
+				min: MIN_TIMESTAMP,
+				max: MAX_TIMESTAMP,
+				id: 'timestamp',
+				moduleTag,
+				functionName: 'makeFromTimestamp'
+			})
+		);
+		const checkedTimeZoneOffset = yield* _(
+			MBadArgumentError.checkRange({
+				actual: timeZoneOffset,
+				min: -12,
+				max: 14,
+				id: 'timeZoneOffset',
+				moduleTag,
+				functionName: 'makeFromTimestamp'
+			})
+		);
+		return unsafeMakeFromTimestamp(checkedTimestamp, checkedTimeZoneOffset);
 	});
 
-export const setOrdinalDay =
-	(ordinalDay: number) =>
-	(self: Type): Type => ({
-		timestamp: Option.none(),
-		year: self.year,
-		ordinalDay: Option.some(ordinalDay),
-		month: self.month,
-		monthDay: self.monthDay,
-		isoWeek: self.isoWeek,
-		weekDay: self.weekDay,
-		hour24: self.hour24,
-		hour12: self.hour12,
-		meridiem: self.meridiem,
-		minute: self.minute,
-		second: self.second,
-		millisecond: self.millisecond,
-		timeZoneOffset: self.timeZoneOffset,
-		isLeapYear: self.isLeapYear,
-		yearStartMs: self.yearStartMs,
-		yearStartMsModulo400Y: self.yearStartMsModulo400Y,
-		firstDayOfYearWeekDay: self.firstDayOfYearWeekDay,
-		firstIsoWeekOffsetMs: self.firstIsoWeekOffsetMs,
-		monthStartMs: self.monthStartMs,
-		isoWeekStartMs: self.isoWeekStartMs,
-		dayMs: Option.none(),
-		hourMs: self.hourMs,
-		minuteMs: self.minuteMs,
-		secondMs: self.secondMs,
-		millisecondMs: self.millisecondMs,
-		timeZoneOffsetMs: self.timeZoneOffsetMs
-	});
+/**
+ * Returns a copy of self with ordinalDay set to the passed value. No input parameters check
+ */
+export const unsafeSetYearAndOrdinalDay =
+	(year: number, ordinalDay: number) =>
+	(self: Type): Type => {
+		const yearData = unsafeCalcYearData(year);
+		return {
+			...self,
+			timestamp: Option.none(),
+			yearData: Option.some(yearData),
+			ordinalDay: Option.some(ordinalDay),
+			monthAndMonthDayData: Option.none(),
+			weekAndWeekDayData: Option.none(),
+			dayMs: Option.some(yearData.yearStartMs + (ordinalDay - 1) * DAY_MS)
+		};
+	};
 
-export const setMonth =
-	(month: number) =>
-	(self: Type): Type => ({
-		timestamp: Option.none(),
-		year: self.year,
-		ordinalDay: self.ordinalDay,
-		month: Option.some(month),
-		monthDay: self.monthDay,
-		isoWeek: self.isoWeek,
-		weekDay: self.weekDay,
-		hour24: self.hour24,
-		hour12: self.hour12,
-		meridiem: self.meridiem,
-		minute: self.minute,
-		second: self.second,
-		millisecond: self.millisecond,
-		timeZoneOffset: self.timeZoneOffset,
-		isLeapYear: self.isLeapYear,
-		yearStartMs: self.yearStartMs,
-		yearStartMsModulo400Y: self.yearStartMsModulo400Y,
-		firstDayOfYearWeekDay: self.firstDayOfYearWeekDay,
-		firstIsoWeekOffsetMs: self.firstIsoWeekOffsetMs,
-		monthStartMs: Option.none(),
-		isoWeekStartMs: self.isoWeekStartMs,
-		dayMs: Option.none(),
-		hourMs: self.hourMs,
-		minuteMs: self.minuteMs,
-		secondMs: self.secondMs,
-		millisecondMs: self.millisecondMs,
-		timeZoneOffsetMs: self.timeZoneOffsetMs
-	});
+/**
+ * Returns a copy of self with ordinalDay set to the passed value.
+ */
+export const setYearAndOrdinalDay =
+	(year: number, ordinalDay: number) =>
+	(self: Type): Either.Either<Type, MBadArgumentError.OutOfRange> =>
+		Either.gen(function* (_) {
+			const checkedYearData = yield* _(calcYearData(year));
+			const checkedOrdinalDay = yield* _(
+				MBadArgumentError.checkRange({
+					actual: ordinalDay,
+					min: 1,
+					max: getNbDaysInYear(checkedYearData.isLeapYear),
+					id: 'ordinalDay',
+					moduleTag,
+					functionName: 'setYearAndOrdinalDay'
+				})
+			);
+			return {
+				...self,
+				timestamp: Option.none(),
+				yearData: Option.some(checkedYearData),
+				ordinalDay: Option.some(checkedOrdinalDay),
+				monthAndMonthDayData: Option.none(),
+				weekAndWeekDayData: Option.none(),
+				dayMs: Option.some(checkedYearData.yearStartMs + (checkedOrdinalDay - 1) * DAY_MS)
+			};
+		});
 
-export const setMonthDay =
-	(monthDay: number) =>
-	(self: Type): Type => ({
-		timestamp: Option.none(),
-		year: self.year,
-		ordinalDay: self.ordinalDay,
-		month: self.month,
-		monthDay: Option.some(monthDay),
-		isoWeek: self.isoWeek,
-		weekDay: self.weekDay,
-		hour24: self.hour24,
-		hour12: self.hour12,
-		meridiem: self.meridiem,
-		minute: self.minute,
-		second: self.second,
-		millisecond: self.millisecond,
-		timeZoneOffset: self.timeZoneOffset,
-		isLeapYear: self.isLeapYear,
-		yearStartMs: self.yearStartMs,
-		yearStartMsModulo400Y: self.yearStartMsModulo400Y,
-		firstDayOfYearWeekDay: self.firstDayOfYearWeekDay,
-		firstIsoWeekOffsetMs: self.firstIsoWeekOffsetMs,
-		monthStartMs: self.monthStartMs,
-		isoWeekStartMs: self.isoWeekStartMs,
-		dayMs: Option.none(),
-		hourMs: self.hourMs,
-		minuteMs: self.minuteMs,
-		secondMs: self.secondMs,
-		millisecondMs: self.millisecondMs,
-		timeZoneOffsetMs: self.timeZoneOffsetMs
-	});
+/**
+ * Returns a copy of self with month and monthDay set to the passed values. No input parameters check
+ */
+export const unsafeSetYearMonthAndMonthDay =
+	(year: number, month: number, monthDay: number) =>
+	(self: Type): Type => {
+		const yearData = unsafeCalcYearData(year);
+		const monthDescriptor = (yearData.isLeapYear ? leapYearMonths : normalYearMonths)[
+			month - 1
+		] as MonthDescriptor;
+		return {
+			...self,
+			timestamp: Option.none(),
+			yearData: Option.some(yearData),
+			ordinalDay: Option.none(),
+			monthAndMonthDayData: Option.some({
+				month,
+				monthDay
+			}),
+			weekAndWeekDayData: Option.none(),
+			dayMs: Option.some(yearData.yearStartMs + monthDescriptor.monthStartMs + (monthDay - 1) * DAY_MS)
+		};
+	};
 
-export const setIsoWeek =
-	(isoWeek: number) =>
-	(self: Type): Type => ({
-		timestamp: Option.none(),
-		year: self.year,
-		ordinalDay: self.ordinalDay,
-		month: self.month,
-		monthDay: self.monthDay,
-		isoWeek: Option.some(isoWeek),
-		weekDay: self.weekDay,
-		hour24: self.hour24,
-		hour12: self.hour12,
-		meridiem: self.meridiem,
-		minute: self.minute,
-		second: self.second,
-		millisecond: self.millisecond,
-		timeZoneOffset: self.timeZoneOffset,
-		isLeapYear: self.isLeapYear,
-		yearStartMs: self.yearStartMs,
-		yearStartMsModulo400Y: self.yearStartMsModulo400Y,
-		firstDayOfYearWeekDay: self.firstDayOfYearWeekDay,
-		firstIsoWeekOffsetMs: self.firstIsoWeekOffsetMs,
-		monthStartMs: self.monthStartMs,
-		isoWeekStartMs: Option.none(),
-		dayMs: Option.none(),
-		hourMs: self.hourMs,
-		minuteMs: self.minuteMs,
-		secondMs: self.secondMs,
-		millisecondMs: self.millisecondMs,
-		timeZoneOffsetMs: self.timeZoneOffsetMs
-	});
+/**
+ * Returns a copy of self with month and monthDay set to the passed values.
+ */
+export const setYearMonthAndMonthDay =
+	(year: number, month: number, monthDay: number) =>
+	(self: Type): Either.Either<Type, MBadArgumentError.OutOfRange> =>
+		Either.gen(function* (_) {
+			const checkedYearData = yield* _(calcYearData(year));
+			const checkedMonth = yield* _(
+				MBadArgumentError.checkRange({
+					actual: month,
+					min: 1,
+					max: 12,
+					id: 'month',
+					moduleTag,
+					functionName: 'setYearMonthAndMonthDay'
+				})
+			);
+			const checkedMonthDescriptor = (checkedYearData.isLeapYear ? leapYearMonths : normalYearMonths)[
+				checkedMonth - 1
+			] as MonthDescriptor;
+			const checkedMonthDay = yield* _(
+				MBadArgumentError.checkRange({
+					actual: monthDay,
+					min: 1,
+					max: checkedMonthDescriptor.nbDaysInMonth,
+					id: 'monthDay',
+					moduleTag,
+					functionName: 'setYearMonthAndMonthDay'
+				})
+			);
+			return {
+				...self,
+				timestamp: Option.none(),
+				yearData: Option.some(checkedYearData),
+				ordinalDay: Option.none(),
+				monthAndMonthDayData: Option.some({
+					month: checkedMonth,
+					monthDay: checkedMonthDay
+				}),
+				weekAndWeekDayData: Option.none(),
+				dayMs: Option.some(
+					checkedYearData.yearStartMs + checkedMonthDescriptor.monthStartMs + (checkedMonthDay - 1) * DAY_MS
+				)
+			};
+		});
 
-export const setWeekDay =
-	(weekDay: number) =>
-	(self: Type): Type => ({
-		timestamp: Option.none(),
-		year: self.year,
-		ordinalDay: self.ordinalDay,
-		month: self.month,
-		monthDay: self.monthDay,
-		isoWeek: self.isoWeek,
-		weekDay: Option.some(weekDay),
-		hour24: self.hour24,
-		hour12: self.hour12,
-		meridiem: self.meridiem,
-		minute: self.minute,
-		second: self.second,
-		millisecond: self.millisecond,
-		timeZoneOffset: self.timeZoneOffset,
-		isLeapYear: self.isLeapYear,
-		yearStartMs: self.yearStartMs,
-		yearStartMsModulo400Y: self.yearStartMsModulo400Y,
-		firstDayOfYearWeekDay: self.firstDayOfYearWeekDay,
-		firstIsoWeekOffsetMs: self.firstIsoWeekOffsetMs,
-		monthStartMs: self.monthStartMs,
-		isoWeekStartMs: self.isoWeekStartMs,
-		dayMs: Option.none(),
-		hourMs: self.hourMs,
-		minuteMs: self.minuteMs,
-		secondMs: self.secondMs,
-		millisecondMs: self.millisecondMs,
-		timeZoneOffsetMs: self.timeZoneOffsetMs
-	});
+/**
+ * Returns a copy of self with isoWeek and weekDay set to the passed values. No input parameters check
+ */
+export const unsafeSetYearIsoWeekAndWeekDay =
+	(year: number, isoWeek: number, weekDay: number) =>
+	(self: Type): Type => {
+		const yearData = unsafeCalcYearData(year);
 
-export const setHour24 =
+		return {
+			...self,
+			timestamp: Option.none(),
+			yearData: Option.some(yearData),
+			ordinalDay: Option.none(),
+			monthAndMonthDayData: Option.none(),
+			weekAndWeekDayData: Option.some({ isoWeek, weekDay }),
+			dayMs: Option.some(
+				yearData.yearStartMs +
+					unsafeGetFirstIsoWeekMs(getWeekDay(yearData.yearStartMsModulo400Y)) +
+					(isoWeek - 1) * WEEK_MS +
+					(weekDay - 1) * DAY_MS
+			)
+		};
+	};
+
+/**
+ * Returns a copy of self with isoWeek and weekDay set to the passed values.
+ */
+export const setYearIsoWeekAndWeekDay =
+	(year: number, isoWeek: number, weekDay: number) =>
+	(self: Type): Either.Either<Type, MBadArgumentError.OutOfRange> =>
+		Either.gen(function* (_) {
+			const checkedYearData = yield* _(calcYearData(year));
+			const firstDayOfYearWeekDay = getWeekDay(checkedYearData.yearStartMsModulo400Y);
+			const checkedIsoWeek = yield* _(
+				MBadArgumentError.checkRange({
+					actual: isoWeek,
+					min: 1,
+					max: unsafeGetNbIsoWeeksInYear(firstDayOfYearWeekDay, checkedYearData.isLeapYear),
+					id: 'isoWeek',
+					moduleTag,
+					functionName: 'setYearIsoWeekAndWeekDay'
+				})
+			);
+			const checkedWeekDay = yield* _(
+				MBadArgumentError.checkRange({
+					actual: weekDay,
+					min: 1,
+					max: 7,
+					id: 'weekDay',
+					moduleTag,
+					functionName: 'setYearIsoWeekAndWeekDay'
+				})
+			);
+			return {
+				...self,
+				timestamp: Option.none(),
+				yearData: Option.some(checkedYearData),
+				ordinalDay: Option.none(),
+				monthAndMonthDayData: Option.none(),
+				weekAndWeekDayData: Option.some({ isoWeek: checkedIsoWeek, weekDay: checkedWeekDay }),
+				dayMs: Option.some(
+					checkedYearData.yearStartMs +
+						unsafeGetFirstIsoWeekMs(firstDayOfYearWeekDay) +
+						(checkedIsoWeek - 1) * WEEK_MS +
+						(checkedWeekDay - 1) * DAY_MS
+				)
+			};
+		});
+
+/**
+ * Returns a copy of self with hour24 set to the passed value. No input parameters check
+ */
+export const unsafeSetHour24 =
 	(hour24: number) =>
 	(self: Type): Type => ({
+		...self,
 		timestamp: Option.none(),
-		year: self.year,
-		ordinalDay: self.ordinalDay,
-		month: self.month,
-		monthDay: self.monthDay,
-		isoWeek: self.isoWeek,
-		weekDay: self.weekDay,
 		hour24: Option.some(hour24),
-		hour12: self.hour12,
-		meridiem: self.meridiem,
-		minute: self.minute,
-		second: self.second,
-		millisecond: self.millisecond,
-		timeZoneOffset: self.timeZoneOffset,
-		isLeapYear: self.isLeapYear,
-		yearStartMs: self.yearStartMs,
-		yearStartMsModulo400Y: self.yearStartMsModulo400Y,
-		firstDayOfYearWeekDay: self.firstDayOfYearWeekDay,
-		firstIsoWeekOffsetMs: self.firstIsoWeekOffsetMs,
-		monthStartMs: self.monthStartMs,
-		isoWeekStartMs: self.isoWeekStartMs,
-		dayMs: self.dayMs,
-		hourMs: Option.none(),
-		minuteMs: self.minuteMs,
-		secondMs: self.secondMs,
-		millisecondMs: self.millisecondMs,
-		timeZoneOffsetMs: self.timeZoneOffsetMs
+		hour12AndMeridiem: Option.none(),
+		hourMs: Option.some(hour24 * HOUR_MS)
 	});
 
-export const setHour12 =
-	(hour12: number) =>
+/**
+ * Returns a copy of self with hour24 set to the passed value.
+ */
+export const setHour24 =
+	(hour24: number) =>
+	(self: Type): Either.Either<Type, MBadArgumentError.OutOfRange> =>
+		pipe(
+			MBadArgumentError.checkRange({
+				actual: hour24,
+				min: 0,
+				max: 23,
+				id: 'hour24',
+				moduleTag,
+				functionName: 'setHour24'
+			}),
+			Either.map(Function.flip(unsafeSetHour24)(self))
+		);
+
+/**
+ * Returns a copy of self with hour12 and meridiem set to the passed values. No input parameters check
+ */
+export const unsafeSetHour12AndMeridiem =
+	(hour12: number, meridiem: 0 | 12) =>
 	(self: Type): Type => ({
+		...self,
 		timestamp: Option.none(),
-		year: self.year,
-		ordinalDay: self.ordinalDay,
-		month: self.month,
-		monthDay: self.monthDay,
-		isoWeek: self.isoWeek,
-		weekDay: self.weekDay,
-		hour24: self.hour24,
-		hour12: Option.some(hour12),
-		meridiem: self.meridiem,
-		minute: self.minute,
-		second: self.second,
-		millisecond: self.millisecond,
-		timeZoneOffset: self.timeZoneOffset,
-		isLeapYear: self.isLeapYear,
-		yearStartMs: self.yearStartMs,
-		yearStartMsModulo400Y: self.yearStartMsModulo400Y,
-		firstDayOfYearWeekDay: self.firstDayOfYearWeekDay,
-		firstIsoWeekOffsetMs: self.firstIsoWeekOffsetMs,
-		monthStartMs: self.monthStartMs,
-		isoWeekStartMs: self.isoWeekStartMs,
-		dayMs: self.dayMs,
-		hourMs: Option.none(),
-		minuteMs: self.minuteMs,
-		secondMs: self.secondMs,
-		millisecondMs: self.millisecondMs,
-		timeZoneOffsetMs: self.timeZoneOffsetMs
+		hour24: Option.none(),
+		hour12AndMeridiem: Option.some({ hour12, meridiem }),
+		hourMs: Option.some((hour12 + meridiem) * HOUR_MS)
 	});
 
-export const setMeridiem =
-	(meridiem: 0 | 12) =>
-	(self: Type): Type => ({
-		timestamp: Option.none(),
-		year: self.year,
-		ordinalDay: self.ordinalDay,
-		month: self.month,
-		monthDay: self.monthDay,
-		isoWeek: self.isoWeek,
-		weekDay: self.weekDay,
-		hour24: self.hour24,
-		hour12: self.hour12,
-		meridiem: Option.some(meridiem),
-		minute: self.minute,
-		second: self.second,
-		millisecond: self.millisecond,
-		timeZoneOffset: self.timeZoneOffset,
-		isLeapYear: self.isLeapYear,
-		yearStartMs: self.yearStartMs,
-		yearStartMsModulo400Y: self.yearStartMsModulo400Y,
-		firstDayOfYearWeekDay: self.firstDayOfYearWeekDay,
-		firstIsoWeekOffsetMs: self.firstIsoWeekOffsetMs,
-		monthStartMs: self.monthStartMs,
-		isoWeekStartMs: self.isoWeekStartMs,
-		dayMs: self.dayMs,
-		hourMs: Option.none(),
-		minuteMs: self.minuteMs,
-		secondMs: self.secondMs,
-		millisecondMs: self.millisecondMs,
-		timeZoneOffsetMs: self.timeZoneOffsetMs
-	});
+/**
+ * Returns a copy of self with hour12 and meridiem set to the passed values.
+ */
+export const setHour12AndMeridiem =
+	(hour12: number, meridiem: 0 | 12) =>
+	(self: Type): Either.Either<Type, MBadArgumentError.OutOfRange> =>
+		pipe(
+			MBadArgumentError.checkRange({
+				actual: hour12,
+				min: 0,
+				max: 11,
+				id: 'hour12',
+				moduleTag,
+				functionName: 'setHour12AndMeridiem'
+			}),
+			Either.map((checkedHour12) => pipe(self, unsafeSetHour12AndMeridiem(checkedHour12, meridiem)))
+		);
 
-export const setMinute =
+/**
+ * Returns a copy of self with minute set to the passed value. No input parameters check
+ */
+export const unsafeSetMinute =
 	(minute: number) =>
 	(self: Type): Type => ({
+		...self,
 		timestamp: Option.none(),
-		year: self.year,
-		ordinalDay: self.ordinalDay,
-		month: self.month,
-		monthDay: self.monthDay,
-		isoWeek: self.isoWeek,
-		weekDay: self.weekDay,
-		hour24: self.hour24,
-		hour12: self.hour12,
-		meridiem: self.meridiem,
 		minute: Option.some(minute),
-		second: self.second,
-		millisecond: self.millisecond,
-		timeZoneOffset: self.timeZoneOffset,
-		isLeapYear: self.isLeapYear,
-		yearStartMs: self.yearStartMs,
-		yearStartMsModulo400Y: self.yearStartMsModulo400Y,
-		firstDayOfYearWeekDay: self.firstDayOfYearWeekDay,
-		firstIsoWeekOffsetMs: self.firstIsoWeekOffsetMs,
-		monthStartMs: self.monthStartMs,
-		isoWeekStartMs: self.isoWeekStartMs,
-		dayMs: self.dayMs,
-		hourMs: self.hourMs,
-		minuteMs: Option.none(),
-		secondMs: self.secondMs,
-		millisecondMs: self.millisecondMs,
-		timeZoneOffsetMs: self.timeZoneOffsetMs
+		minuteMs: Option.some(minute * MINUTE_MS)
 	});
 
-export const setSecond =
+/**
+ * Returns a copy of self with minute set to the passed value.
+ */
+export const setMinute =
+	(minute: number) =>
+	(self: Type): Either.Either<Type, MBadArgumentError.OutOfRange> =>
+		pipe(
+			MBadArgumentError.checkRange({
+				actual: minute,
+				min: 0,
+				max: 59,
+				id: 'minute',
+				moduleTag,
+				functionName: 'setMinute'
+			}),
+			Either.map(Function.flip(unsafeSetMinute)(self))
+		);
+
+/**
+ * Returns a copy of self with second set to the passed value. No input parameters check
+ */
+export const unsafeSetSecond =
 	(second: number) =>
 	(self: Type): Type => ({
+		...self,
 		timestamp: Option.none(),
-		year: self.year,
-		ordinalDay: self.ordinalDay,
-		month: self.month,
-		monthDay: self.monthDay,
-		isoWeek: self.isoWeek,
-		weekDay: self.weekDay,
-		hour24: self.hour24,
-		hour12: self.hour12,
-		meridiem: self.meridiem,
-		minute: self.minute,
 		second: Option.some(second),
-		millisecond: self.millisecond,
-		timeZoneOffset: self.timeZoneOffset,
-		isLeapYear: self.isLeapYear,
-		yearStartMs: self.yearStartMs,
-		yearStartMsModulo400Y: self.yearStartMsModulo400Y,
-		firstDayOfYearWeekDay: self.firstDayOfYearWeekDay,
-		firstIsoWeekOffsetMs: self.firstIsoWeekOffsetMs,
-		monthStartMs: self.monthStartMs,
-		isoWeekStartMs: self.isoWeekStartMs,
-		dayMs: self.dayMs,
-		hourMs: self.hourMs,
-		minuteMs: self.minuteMs,
-		secondMs: Option.none(),
-		millisecondMs: self.millisecondMs,
-		timeZoneOffsetMs: self.timeZoneOffsetMs
+		secondMs: Option.some(second * SECOND_MS)
 	});
 
-export const setMillisecond =
+/**
+ * Returns a copy of self with second set to the passed value.
+ */
+export const setSecond =
+	(second: number) =>
+	(self: Type): Either.Either<Type, MBadArgumentError.OutOfRange> =>
+		pipe(
+			MBadArgumentError.checkRange({
+				actual: second,
+				min: 0,
+				max: 59,
+				id: 'second',
+				moduleTag,
+				functionName: 'setSecond'
+			}),
+			Either.map(Function.flip(unsafeSetSecond)(self))
+		);
+
+/**
+ * Returns a copy of self with millisecond set to the passed value. No input parameters check
+ */
+export const unsafeSetMillisecond =
 	(millisecond: number) =>
 	(self: Type): Type => ({
+		...self,
 		timestamp: Option.none(),
-		year: self.year,
-		ordinalDay: self.ordinalDay,
-		month: self.month,
-		monthDay: self.monthDay,
-		isoWeek: self.isoWeek,
-		weekDay: self.weekDay,
-		hour24: self.hour24,
-		hour12: self.hour12,
-		meridiem: self.meridiem,
-		minute: self.minute,
-		second: self.second,
-		millisecond: Option.some(millisecond),
-		timeZoneOffset: self.timeZoneOffset,
-		isLeapYear: self.isLeapYear,
-		yearStartMs: self.yearStartMs,
-		yearStartMsModulo400Y: self.yearStartMsModulo400Y,
-		firstDayOfYearWeekDay: self.firstDayOfYearWeekDay,
-		firstIsoWeekOffsetMs: self.firstIsoWeekOffsetMs,
-		monthStartMs: self.monthStartMs,
-		isoWeekStartMs: self.isoWeekStartMs,
-		dayMs: self.dayMs,
-		hourMs: self.hourMs,
-		minuteMs: self.minuteMs,
-		secondMs: self.secondMs,
-		millisecondMs: Option.none(),
-		timeZoneOffsetMs: self.timeZoneOffsetMs
+		millisecond: Option.some(millisecond)
 	});
+
+/**
+ * Returns a copy of self with millisecond set to the passed value.
+ */
+export const setMillisecond =
+	(millisecond: number) =>
+	(self: Type): Either.Either<Type, MBadArgumentError.OutOfRange> =>
+		pipe(
+			MBadArgumentError.checkRange({
+				actual: millisecond,
+				min: 0,
+				max: 999,
+				id: 'millisecond',
+				moduleTag,
+				functionName: 'setMillisecond'
+			}),
+			Either.map(Function.flip(unsafeSetMillisecond)(self))
+		);
 
 export const setTimeZoneOffset =
 	(timeZoneOffset: number) =>
 	(self: Type): Type => ({
 		timestamp: Option.none(),
-		year: self.year,
+		yearData: self.yearData,
 		ordinalDay: self.ordinalDay,
 		month: self.month,
 		monthDay: self.monthDay,
@@ -553,9 +702,6 @@ export const setTimeZoneOffset =
 		second: self.second,
 		millisecond: self.millisecond,
 		timeZoneOffset: Option.some(timeZoneOffset),
-		isLeapYear: self.isLeapYear,
-		yearStartMs: self.yearStartMs,
-		yearStartMsModulo400Y: self.yearStartMsModulo400Y,
 		firstDayOfYearWeekDay: self.firstDayOfYearWeekDay,
 		firstIsoWeekOffsetMs: self.firstIsoWeekOffsetMs,
 		monthStartMs: self.monthStartMs,
@@ -564,6 +710,12 @@ export const setTimeZoneOffset =
 		hourMs: self.hourMs,
 		minuteMs: self.minuteMs,
 		secondMs: self.secondMs,
-		millisecondMs: self.millisecondMs,
 		timeZoneOffsetMs: Option.none()
 	});
+
+export const getTimeStamp = (self: Type): Either.Either<number, unknown> =>
+	pipe(
+		self.timestamp,
+		Either.fromOption(() => new Cause.NoSuchElementException()),
+		Either.orElse(() => 1)
+	) as never;

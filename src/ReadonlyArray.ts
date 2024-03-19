@@ -194,20 +194,15 @@ export const fromIndexedFlattened =
 			for (let i = 0; i < self.length; i++) {
 				const [index, value] = self[i] as [number, A];
 				const checkedIndex = yield* _(
-					index,
-					MEither.liftPredicate(
-						Predicate.and(Number.greaterThanOrEqualTo(0), Number.lessThan(size)),
-						(index) =>
-							new MBadArgumentError.OutOfRange({
-								id: 'self',
-								position: i,
-								moduleTag,
-								functionName: 'fromIndexedFlattened',
-								actual: index,
-								min: 0,
-								max: size - 1
-							})
-					)
+					MBadArgumentError.checkRange({
+						id: 'self',
+						position: i,
+						moduleTag,
+						functionName: 'fromIndexedFlattened',
+						actual: index,
+						min: 0,
+						max: size - 1
+					})
 				);
 				(out[checkedIndex] as Array<A>).push(value);
 			}
@@ -227,20 +222,15 @@ export const fromUniqueIndexedFlattened =
 			for (let i = 0; i < self.length; i++) {
 				const [index, value] = self[i] as [number, A];
 				const checkedIndex = yield* _(
-					index,
-					MEither.liftPredicate(
-						Predicate.and(Number.greaterThanOrEqualTo(0), Number.lessThan(size)),
-						(index) =>
-							new MBadArgumentError.OutOfRange({
-								id: 'self',
-								position: i,
-								moduleTag,
-								functionName: 'fromUniqueIndexedFlattened',
-								actual: index,
-								min: 0,
-								max: size - 1
-							})
-					)
+					MBadArgumentError.checkRange({
+						id: 'self',
+						position: i,
+						moduleTag,
+						functionName: 'fromUniqueIndexedFlattened',
+						actual: index,
+						min: 0,
+						max: size - 1
+					})
 				);
 
 				out[checkedIndex] = Option.some(

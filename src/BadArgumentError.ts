@@ -1,4 +1,4 @@
-import { Data } from 'effect';
+import { Data, Either, Number, Option, Predicate, pipe } from 'effect';
 
 interface BaseType {
 	// Name of the argument that had the error
@@ -31,22 +31,23 @@ export class OutOfRange extends Data.TaggedError('BadArgumentOutOfRange')<OutOfR
 	}
 }
 
-/**
- * BadLength signals an arraylike whose lentgth is incorrect
- */
-
-export interface BadLengthType extends BaseType {
-	// Current length
-	readonly actual: number;
-	// Expected length
-	readonly expected: number;
-}
-
-export class BadLength extends Data.TaggedError('BadArgumentBadLength')<BadLengthType> {
-	override get message() {
-		return `${argumentString(this)} does not have expected size'. Actual:${this.actual}, expected: ${this.expected}.`;
-	}
-}
+export const checkRange = (params: {
+	actual: number;
+	min: number;
+	max: number;
+	id: string;
+	position?: number;
+	moduleTag: string;
+	functionName: string;
+}): Either.Either<number, OutOfRange> =>
+	pipe(
+		params.actual,
+		// Do not use MEither.liftPredicate here to avoid cycling imports
+		Option.liftPredicate(
+			Predicate.and(Number.greaterThanOrEqualTo(params.min), Number.lessThanOrEqualTo(params.max))
+		),
+		Either.fromOption(() => new OutOfRange(params))
+	);
 
 /**
  * TwoMany signals an argument that receives more values than it expects
