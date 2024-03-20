@@ -18,4 +18,3 @@ export * as MString from '#mjljm/effect-lib/String';
 export * as MTemplater from '#mjljm/effect-lib/Templater';
 export * as MTree from '#mjljm/effect-lib/Tree';
 export * as MTuple from '#mjljm/effect-lib/Tuple';
-export * as MDate from '#mjljm/effect-lib/date';

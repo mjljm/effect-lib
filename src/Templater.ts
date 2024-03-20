@@ -8,7 +8,7 @@ import { MEither, MString, MTuple } from '#mjljm/effect-lib/index';
 import { Either, Function, Option, Order, ReadonlyArray, String, Tuple, pipe } from 'effect';
 import { flow } from 'effect/Function';
 
-const moduleTag = '@mjljm/effect-lib/effect/Template/';
+const moduleTag = '@mjljm/effect-lib/Template/';
 
 /**
  * Model

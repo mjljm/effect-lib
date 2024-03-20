@@ -9,7 +9,8 @@ interface BaseType {
 }
 
 const argumentString = (self: BaseType): string =>
-	`Argument '${self.id}'` + (self.position === undefined ? '' : ` at position ${self.position}`);
+	`${self.moduleTag}${self.functionName}: argument '${self.id}'` +
+	(self.position === undefined ? '' : ` at position ${self.position}`);
 
 export const mapId = <B extends BaseType>(self: B, f: (id: string) => string): B => ({ ...self, id: f(self.id) });
 /**
@@ -25,7 +26,7 @@ export interface OutOfRangeType extends BaseType {
 	readonly max: number;
 }
 
-export class OutOfRange extends Data.TaggedError('BadArgumentOutOfRange')<OutOfRangeType> {
+export class OutOfRange extends Data.TaggedError('Effect-lib_BadArgument_OutOfRange')<OutOfRangeType> {
 	override get message() {
 		return `${argumentString(this)} is out of range. Actual:${this.actual}, expected: integer between ${this.min} included and ${this.max} included.`;
 	}
@@ -60,7 +61,7 @@ export interface TooManyType extends BaseType {
 	readonly expected: string;
 }
 
-export class TooMany extends Data.TaggedError('BadArgumentTooMany')<TooManyType> {
+export class TooMany extends Data.TaggedError('Effect-lib_BadArgument_TooMany')<TooManyType> {
 	override get message() {
 		return `${argumentString(this)} received value:${this.actual} that contradicts previously received value:${this.expected}.`;
 	}
@@ -77,7 +78,7 @@ export interface BadFormatType extends BaseType {
 	readonly expected: string;
 }
 
-export class BadFormat extends Data.TaggedError('BadArgumentBadFormat')<BadFormatType> {
+export class BadFormat extends Data.TaggedError('Effect-lib_BadArgument_BadFormat')<BadFormatType> {
 	override get message() {
 		return `${argumentString(this)} does not match expected format. Received:${this.actual}, expected format: ${this.expected}.`;
 	}
@@ -91,4 +92,4 @@ export interface GeneralType extends BaseType {
 	readonly message: string;
 }
 
-export class General extends Data.TaggedError('BadArgumentGeneral')<GeneralType> {}
+export class General extends Data.TaggedError('Effect-lib_BadArgument_General')<GeneralType> {}

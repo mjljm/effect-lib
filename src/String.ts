@@ -1,7 +1,7 @@
 import * as MFunction from '#mjljm/effect-lib/Function';
 import { Function, Option, Order, ReadonlyArray, String, pipe } from 'effect';
 
-//const moduleTag = '@mjljm/effect-lib/effect/String/';
+//const moduleTag = '@mjljm/effect-lib/String/';
 
 export interface SearchResult {
 	/** Index of the first letter of the match */

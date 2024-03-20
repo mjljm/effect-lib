@@ -14,7 +14,7 @@ import {
 	pipe
 } from 'effect';
 
-const moduleTag = '@mjljm/effect-lib/effect/ReadonlyArray/';
+const moduleTag = '@mjljm/effect-lib/ReadonlyArray/';
 
 /**
  * Returns true if the provided ReadonlyArray contains duplicates using the provided isEquivalent function
