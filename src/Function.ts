@@ -9,9 +9,9 @@ import {
 	Option,
 	Predicate,
 	ReadonlyArray,
+	flow,
 	identity
 } from 'effect';
-import { flip } from 'effect/Function';
 
 //const moduleTag = '@mjljm/effect-lib/Function/';
 
@@ -311,7 +311,7 @@ export const iif: {
 	<A>(cond: Predicate.Predicate<A>, onTrue: (a: A) => A) =>
 	(a: A) =>
 		cond(a) ? onTrue(a) : a;
-flip;
+
 /**
  * Pipable if else
  */
@@ -329,20 +329,19 @@ export const ifElse: {
 /**
  * Flips a dual function
  */
-/*type DataLastFunction<A, B extends ReadonlyArray<unknown>, C> = (self: A) => (...b: B) => C;
+export const flipDual =
+	<A, B extends ReadonlyArray<unknown>, C>(f: {
+		(...b: B): (self: A) => C;
+		(self: A, ...b: B): C;
+	}): ((self: A) => (...b: B) => C) =>
+	(self) =>
+	(...b) =>
+		f(...b)(self);
 
-type DualFunction<A, B extends ReadonlyArray<unknown>, C extends B,C> = {
-	(...b: B): (self: A) => C;
-	(self: A, ...b: B): C;
-};
-export const flipDual: <A, B extends ReadonlyArray<unknown>, C>(
-	f: DualFunction<A, B, C>
-) => DataLastFunction<A, B, C> =
-	<A, B extends ReadonlyArray<unknown>, C>(f: DualFunction<A, B, C>): DataLastFunction<A, B, C> =>
-	(self: A) =>
-	(...b: B) =>
-		f(...b)(self);*/
-
+export const mapOnFunctionReturnValue =
+	<B, C>(f: (b: B) => C) =>
+	<A extends ReadonlyArray<unknown>>(self: (...a: A) => B): ((...a: A) => C) =>
+		flow(self, f);
 /**
  * Type that expands a type
  */

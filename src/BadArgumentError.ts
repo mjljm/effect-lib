@@ -1,4 +1,6 @@
-import { Data, Either, Number, Option, Predicate, pipe } from 'effect';
+import * as MEither from '#mjljm/effect-lib/Either';
+import { MFunction } from '#mjljm/effect-lib/index';
+import { Data, Either, HashMap, HashSet, Number, Predicate, ReadonlyArray, pipe } from 'effect';
 
 interface BaseType {
 	// Name of the argument that had the error
@@ -12,7 +14,9 @@ const argumentString = (self: BaseType): string =>
 	`${self.moduleTag}${self.functionName}: argument '${self.id}'` +
 	(self.position === undefined ? '' : ` at position ${self.position}`);
 
-export const mapId = <B extends BaseType>(self: B, f: (id: string) => string): B => ({ ...self, id: f(self.id) });
+export const mapId =
+	(f: (id: string) => string) =>
+	<B extends BaseType>(self: B): B => ({ ...self, id: f(self.id) });
 /**
  * OutOfRange signals an out-of-range error
  */
@@ -32,24 +36,65 @@ export class OutOfRange extends Data.TaggedError('Effect-lib_BadArgument_OutOfRa
 	}
 }
 
-export const checkRange = (params: {
-	actual: number;
-	min: number;
-	max: number;
-	id: string;
-	position?: number;
-	moduleTag: string;
-	functionName: string;
-}): Either.Either<number, OutOfRange> =>
-	pipe(
-		params.actual,
-		// Do not use MEither.liftPredicate here to avoid cycling imports
-		Option.liftPredicate(
-			Predicate.and(Number.greaterThanOrEqualTo(params.min), Number.lessThanOrEqualTo(params.max))
-		),
-		Either.fromOption(() => new OutOfRange(params))
-	);
+export const checkRange =
+	(params: { min: number; max: number; id: string; position?: number; moduleTag: string; functionName: string }) =>
+	(actual: number): Either.Either<number, OutOfRange> =>
+		pipe(
+			actual,
+			MEither.liftPredicate(
+				Predicate.and(Number.greaterThanOrEqualTo(params.min), Number.lessThanOrEqualTo(params.max)),
+				() => new OutOfRange({ ...params, actual })
+			)
+		);
 
+export interface DisallowedValueType<K extends string> extends BaseType {
+	// Value of the argument
+	readonly actual: K;
+	// Array of allowed values
+	readonly allowedValues: HashSet.HashSet<K>;
+}
+
+export class DisallowedValue<K extends string> extends Data.TaggedError('Effect-lib_BadArgument_DisallowedValue')<
+	DisallowedValueType<K>
+> {
+	override get message() {
+		return `${argumentString(this)} has disallowed value. Actual:${this.actual}, expected: one of ${ReadonlyArray.join(this.allowedValues, ', ')}.`;
+	}
+}
+
+export const checkValue =
+	<K extends string>(params: {
+		allowedValues: HashSet.HashSet<K>;
+		id: string;
+		position?: number;
+		moduleTag: string;
+		functionName: string;
+	}) =>
+	(actual: K): Either.Either<K, DisallowedValue<K>> =>
+		pipe(
+			actual,
+			MEither.liftPredicate(
+				MFunction.flipDual(HashSet.has<K>)(params.allowedValues),
+				() => new DisallowedValue({ ...params, actual })
+			)
+		);
+
+export const checkAndMapValue =
+	<K extends string, V>(params: {
+		allowedValues: HashMap.HashMap<K, V>;
+		id: string;
+		position?: number;
+		moduleTag: string;
+		functionName: string;
+	}) =>
+	(actual: K): Either.Either<V, DisallowedValue<K>> =>
+		pipe(
+			params.allowedValues,
+			HashMap.get(actual),
+			Either.fromOption(
+				() => new DisallowedValue({ ...params, actual, allowedValues: HashMap.keySet(params.allowedValues) })
+			)
+		);
 /**
  * BadLength signals an arraylike whose lentgth is incorrect
  */
@@ -67,38 +112,37 @@ export class BadLength extends Data.TaggedError('Effect-lib_BadArgument_BadLengt
 	}
 }
 
-export const checkLength = <T extends ArrayLike<unknown>>(params: {
-	target: T;
-	expected: number;
-	id: string;
-	position?: number;
-	moduleTag: string;
-	functionName: string;
-}): Either.Either<T, BadLength> => {
-	const arr = params.target;
-	const actual = arr.length;
-	return pipe(
-		arr,
-		// Do not use MEither.liftPredicate and Function.strictEquals here to avoid cycling imports
-		Option.liftPredicate(() => actual === params.expected),
-		Either.fromOption(() => new BadLength({ ...params, actual }))
-	);
-};
+export const checkLength =
+	<T extends ArrayLike<unknown>>(params: {
+		expected: number;
+		id: string;
+		position?: number;
+		moduleTag: string;
+		functionName: string;
+	}) =>
+	(target: T): Either.Either<T, BadLength> =>
+		pipe(
+			target,
+			MEither.liftPredicate(
+				(arrayLike) => pipe(arrayLike.length, MFunction.strictEquals(params.expected)),
+				(arrayLike) => new BadLength({ ...params, actual: arrayLike.length })
+			)
+		);
 
 /**
  * TwoMany signals an argument that receives more values than it expects
  */
 
-export interface TooManyType extends BaseType {
+export interface TooManyType<T> extends BaseType {
 	// The latest value received
-	readonly actual: string;
+	readonly actual: T;
 	// The previous value received
-	readonly expected: string;
+	readonly expected: T;
 }
 
-export class TooMany extends Data.TaggedError('Effect-lib_BadArgument_TooMany')<TooManyType> {
+export class TooMany<T> extends Data.TaggedError('Effect-lib_BadArgument_TooMany')<TooManyType<T>> {
 	override get message() {
-		return `${argumentString(this)} received value:${this.actual} that contradicts previously received value:${this.expected}.`;
+		return `${argumentString(this)} received value:${String(this.actual)} that contradicts previously received value:${String(this.expected)}.`;
 	}
 }
 

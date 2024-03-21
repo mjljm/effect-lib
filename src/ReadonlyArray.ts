@@ -194,12 +194,12 @@ export const fromIndexedFlattened =
 			for (let i = 0; i < self.length; i++) {
 				const [index, value] = self[i] as [number, A];
 				const checkedIndex = yield* _(
+					index,
 					MBadArgumentError.checkRange({
 						id: 'self',
 						position: i,
 						moduleTag,
 						functionName: 'fromIndexedFlattened',
-						actual: index,
 						min: 0,
 						max: size - 1
 					})
@@ -216,18 +216,18 @@ export const fromUniqueIndexedFlattened =
 	(size: number) =>
 	<A>(
 		self: ReadonlyArray<[number, A]>
-	): Either.Either<ReadonlyArray<Option.Option<A>>, MBadArgumentError.OutOfRange | MBadArgumentError.TooMany> =>
+	): Either.Either<ReadonlyArray<Option.Option<A>>, MBadArgumentError.OutOfRange | MBadArgumentError.TooMany<A>> =>
 		Either.gen(function* (_) {
 			const out = ReadonlyArray.makeBy(size, () => Option.none<A>());
 			for (let i = 0; i < self.length; i++) {
 				const [index, value] = self[i] as [number, A];
 				const checkedIndex = yield* _(
+					index,
 					MBadArgumentError.checkRange({
 						id: 'self',
 						position: i,
 						moduleTag,
 						functionName: 'fromUniqueIndexedFlattened',
-						actual: index,
 						min: 0,
 						max: size - 1
 					})
@@ -244,15 +244,15 @@ export const fromUniqueIndexedFlattened =
 									position: i,
 									moduleTag,
 									functionName: 'fromUniqueIndexedFlattened',
-									actual: String(newValue),
-									expected: String(previousValue)
+									actual: newValue,
+									expected: previousValue
 								})
 						)
 					)
 				);
 			}
 			return out;
-		}) as never;
+		});
 
 /**
  * Same as ReadonlyArray.groupBy but with a value projection function
