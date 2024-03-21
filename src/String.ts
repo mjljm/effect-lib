@@ -1,5 +1,5 @@
 import * as MFunction from '#mjljm/effect-lib/Function';
-import { Function, Option, Order, ReadonlyArray, String, pipe } from 'effect';
+import { Function, Option, Order, ReadonlyArray, String, Tuple, pipe } from 'effect';
 
 //const moduleTag = '@mjljm/effect-lib/String/';
 
@@ -228,7 +228,18 @@ export const prepend =
 export const replaceBetween = (replacement: string, startIndex: number, endIndex: number) => (self: string) =>
 	self.substring(0, startIndex) + replacement + self.substring(endIndex);
 
+/**
+ * RegExp exec called from a string
+ */
 export const applyRegExp =
 	(regexp: RegExp) =>
 	(self: string): Option.Option<RegExpExecArray> =>
 		pipe(regexp.exec(self), Option.fromNullable);
+
+/**
+ * Splits a string in two parts at position n. The length of the first string is n (characters 0 to n-1).
+ */
+export const splitAt =
+	(n: number) =>
+	(self: string): [left: string, right: string] =>
+		Tuple.make(self.substring(0, n), self.substring(n));

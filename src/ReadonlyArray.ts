@@ -1,4 +1,4 @@
-import { MBadArgumentError, MEither, MNumber } from '#mjljm/effect-lib/index';
+import { MBadArgumentError, MEither, MFunction } from '#mjljm/effect-lib/index';
 import {
 	Either,
 	Equal,
@@ -24,7 +24,7 @@ const moduleTag = '@mjljm/effect-lib/ReadonlyArray/';
 export const hasDuplicatesWith =
 	<A>(isEquivalent: (self: NoInfer<A>, that: NoInfer<A>) => boolean) =>
 	(self: ReadonlyArray<A>): boolean =>
-		pipe(self, ReadonlyArray.dedupeWith(isEquivalent), ReadonlyArray.length, MNumber.equals(self.length));
+		pipe(self, ReadonlyArray.dedupeWith(isEquivalent), ReadonlyArray.length, MFunction.strictEquals(self.length));
 
 /**
  * Returns true if the provided ReadonlyArray contains duplicates

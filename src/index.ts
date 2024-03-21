@@ -15,6 +15,5 @@ export * as MSchema from '#mjljm/effect-lib/Schema';
 export * as ScopeOnce from '#mjljm/effect-lib/ScopeOnce';
 export * as MStream from '#mjljm/effect-lib/Stream';
 export * as MString from '#mjljm/effect-lib/String';
-export * as MTemplater from '#mjljm/effect-lib/Templater';
 export * as MTree from '#mjljm/effect-lib/Tree';
 export * as MTuple from '#mjljm/effect-lib/Tuple';

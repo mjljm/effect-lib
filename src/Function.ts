@@ -294,6 +294,14 @@ export const isOfId =
 		Predicate.hasProperty(u, TypeId);
 
 /**
+ * strict equality comparator
+ */
+export const strictEquals =
+	<A>(that: A) =>
+	(self: A): boolean =>
+		self === that;
+
+/**
  * Pipable if
  */
 export const iif: {

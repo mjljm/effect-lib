@@ -1,4 +1,5 @@
-import { Cause, Either, Option, Predicate, pipe } from 'effect';
+import { MTuple } from '#mjljm/effect-lib/index';
+import { Cause, Either, Option, Predicate, Tuple, pipe } from 'effect';
 
 /**
  * Lifts a value r to a right if predicate returns true. If predicate returns false, it lifts r to a left that is calculated from itself by orLeftWith
@@ -6,15 +7,15 @@ import { Cause, Either, Option, Predicate, pipe } from 'effect';
 
 export const liftPredicate: {
 	// Note: I intentionally avoid using the NoInfer pattern here.
-	<R, R1 extends R, L>(
-		refinement: Predicate.Refinement<R, R1>,
-		orLeftWith: (r: R) => L
-	): (r: R) => Either.Either<R1, L>;
-	<R, L>(predicate: Predicate.Predicate<R>, orLeftWith: (r: R) => L): (r: R) => Either.Either<R, L>;
+	<A, A1 extends A, L>(
+		refinement: Predicate.Refinement<A, A1>,
+		orLeftWith: (a: A) => L
+	): (a: A) => Either.Either<A1, L>;
+	<A, L>(predicate: Predicate.Predicate<A>, orLeftWith: (a: A) => L): (a: A) => Either.Either<A, L>;
 } =
-	<R, L>(predicate: Predicate.Predicate<R>, orLeftWith: (r: R) => L) =>
-	(r: R): Either.Either<R, L> =>
-		predicate(r) ? Either.right(r) : Either.left(orLeftWith(r));
+	<A, L>(predicate: Predicate.Predicate<A>, orLeftWith: (a: A) => L) =>
+	(a: A): Either.Either<A, L> =>
+		predicate(a) ? Either.right(a) : Either.left(orLeftWith(a));
 
 /**
  * Lifts a value r to a right if f applied to r returns a none. If it returns a some(c), it lifts r to a left that is calculated from itself and c
@@ -58,4 +59,15 @@ export const optionFromOptional = <A, E>(
 				? Either.right(Option.none<A>())
 				: Either.left(e as Exclude<E, Cause.NoSuchElementException>)
 		)
+	);
+
+/**
+ * Transforms an either of a tuple into a tuple of either's. Useful for instance for error management in reduce or mapAccum
+ */
+
+export const traverse = <A, B, L>(self: Either.Either<[A, B], L>): [Either.Either<A, L>, Either.Either<B, L>] =>
+	pipe(
+		self,
+		Either.map(Tuple.mapBoth({ onFirst: Either.right, onSecond: Either.right })),
+		Either.getOrElse(MTuple.makeBothBy({ onFirst: Either.left, onSecond: Either.left }))
 	);

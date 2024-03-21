@@ -17,11 +17,3 @@ export const unsafeFromString = (s: string): number => +s;
  */
 
 export const intModulo = JsPatches.intModulo;
-
-/**
- * strict equality comparator
- */
-export const equals =
-	(that: number) =>
-	(self: number): boolean =>
-		self === that;

@@ -1,4 +1,4 @@
-import { MEither, MNumber } from '#mjljm/effect-lib/index';
+import { MEither, MFunction } from '#mjljm/effect-lib/index';
 import { Chunk, Either, Function, Number, Option, Predicate, flow, pipe } from 'effect';
 
 /**
@@ -7,7 +7,7 @@ import { Chunk, Either, Function, Number, Option, Predicate, flow, pipe } from '
  * @since 1.0.0
  */
 export const hasDuplicates = <A>(self: Chunk.Chunk<A>): boolean =>
-	pipe(self, Chunk.dedupe, Chunk.size, MNumber.equals(self.length));
+	pipe(self, Chunk.dedupe, Chunk.size, MFunction.strictEquals(self.length));
 
 /**
  * Returns none if self contains zero or more than one element. Returns a some of the only element of the array otherwise.

@@ -51,6 +51,41 @@ export const checkRange = (params: {
 	);
 
 /**
+ * BadLength signals an arraylike whose lentgth is incorrect
+ */
+
+export interface BadLengthType extends BaseType {
+	// Current length
+	readonly actual: number;
+	// Expected length
+	readonly expected: number;
+}
+
+export class BadLength extends Data.TaggedError('Effect-lib_BadArgument_BadLength')<BadLengthType> {
+	override get message() {
+		return `${argumentString(this)} does not have expected size'. Actual:${this.actual}, expected: ${this.expected}.`;
+	}
+}
+
+export const checkLength = <T extends ArrayLike<unknown>>(params: {
+	target: T;
+	expected: number;
+	id: string;
+	position?: number;
+	moduleTag: string;
+	functionName: string;
+}): Either.Either<T, BadLength> => {
+	const arr = params.target;
+	const actual = arr.length;
+	return pipe(
+		arr,
+		// Do not use MEither.liftPredicate and Function.strictEquals here to avoid cycling imports
+		Option.liftPredicate(() => actual === params.expected),
+		Either.fromOption(() => new BadLength({ ...params, actual }))
+	);
+};
+
+/**
  * TwoMany signals an argument that receives more values than it expects
  */
 
