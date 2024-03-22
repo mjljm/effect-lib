@@ -1,4 +1,4 @@
-import { MEither, MFunction } from '#mjljm/effect-lib/index';
+import { Meither, Mfunction } from '#src/internal/index';
 import { Chunk, Either, Function, Number, Option, Predicate, flow, pipe } from 'effect';
 
 /**
@@ -7,7 +7,7 @@ import { Chunk, Either, Function, Number, Option, Predicate, flow, pipe } from '
  * @since 1.0.0
  */
 export const hasDuplicates = <A>(self: Chunk.Chunk<A>): boolean =>
-	pipe(self, Chunk.dedupe, Chunk.size, MFunction.strictEquals(self.length));
+	pipe(self, Chunk.dedupe, Chunk.size, Mfunction.strictEquals(self.length));
 
 /**
  * Returns none if self contains zero or more than one element. Returns a some of the only element of the array otherwise.
@@ -29,7 +29,7 @@ export const getSingletonOrFailsWith =
 	<A>(self: Chunk.Chunk<A>): Either.Either<Option.Option<A>, B> =>
 		pipe(
 			self,
-			MEither.liftPredicate(flow(Chunk.size, Number.lessThanOrEqualTo(1)), error),
+			Meither.liftPredicate(flow(Chunk.size, Number.lessThanOrEqualTo(1)), error),
 			Either.map(Chunk.get(0))
 		);
 

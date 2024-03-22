@@ -1,8 +1,8 @@
-import * as MFunction from '#mjljm/effect-lib/Function';
+import { Mfunction } from '#src/internal/index';
 
-export const primitive = MFunction.isPrimitive;
-const isFunction = MFunction.isFunction;
+export const primitive = Mfunction.isPrimitive;
+const isFunction = Mfunction.isFunction;
 export { isFunction as function };
-export const array = MFunction.isArray;
-export const recordOrArray = MFunction.isRecordOrArray;
-export const url = MFunction.isUrl;
+export const array = Mfunction.isArray;
+export const recordOrArray = Mfunction.isRecordOrArray;
+export const url = Mfunction.isUrl;

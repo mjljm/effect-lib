@@ -1,4 +1,4 @@
-import { MReadonlyRecord } from '#mjljm/effect-lib/index';
+import { MreadonlyRecord } from '#src/internal/index';
 import { ArrayFormatter, ParseResult, Schema } from '@effect/schema';
 import { JsRegExp } from '@mjljm/js-lib';
 
@@ -35,7 +35,7 @@ const semVerPattern = new RegExp(
 const SemVerBrand = `${moduleTag}SemVer`;
 type SemVerBrand = typeof SemVerBrand;
 export type SemVer = Brand.Branded<string, SemVerBrand>;
-export const SemVer: Schema.BrandSchema<SemVer, string, never> = pipe(
+export const SemVer: Schema.brand<Schema.Schema<string, string, never>, '@mjljm/effect-lib/Schema/SemVer'> = pipe(
 	Schema.string,
 	Schema.pattern(semVerPattern, {
 		message: () => 'SemVer should have following format: number.number.number'
@@ -47,7 +47,7 @@ const emailPattern = /[a-z0-9]+@[a-z]+\.[a-z]{2,3}/;
 const EmailBrand = `${moduleTag}Email`;
 type EmailBrand = typeof EmailBrand;
 export type Email = Brand.Branded<string, EmailBrand>;
-export const Email: Schema.BrandSchema<Email, string, never> = pipe(
+export const Email: Schema.brand<Schema.Schema<string, string, never>, '@mjljm/effect-lib/Schema/Email'> = pipe(
 	Schema.string,
 	Schema.pattern(emailPattern, {
 		message: () => 'Not a proper email'
@@ -58,10 +58,10 @@ export const Email: Schema.BrandSchema<Email, string, never> = pipe(
 const TwoDigitIntBrand = `${moduleTag}TwoDigitInt`;
 type TwoDigitIntBrand = typeof TwoDigitIntBrand;
 export type TwoDigitInt = Brand.Branded<number, TwoDigitIntBrand>;
-export const TwoDigitInt: Schema.BrandSchema<TwoDigitInt, number, never> = Schema.number.pipe(
-	Schema.between(0, 100),
-	Schema.brand(TwoDigitIntBrand)
-);
+export const TwoDigitInt: Schema.brand<
+	Schema.Schema<number, number, never>,
+	'@mjljm/effect-lib/Schema/TwoDigitInt'
+> = Schema.number.pipe(Schema.between(0, 100), Schema.brand(TwoDigitIntBrand));
 
 export const twoDigitIntFromString = Schema.compose(Schema.NumberFromString, TwoDigitInt);
 
@@ -83,8 +83,8 @@ export const offset = (offset: number): Schema.Schema<number> =>
  */
 export const inverse = <A, I, R>(s: Schema.Schema<A, I, R>): Schema.Schema<I, A, R> =>
 	Schema.transformOrFail(
-		Schema.to(s),
-		Schema.from(s),
+		Schema.typeSchema(s),
+		Schema.encodedSchema(s),
 		(to) =>
 			pipe(
 				to,
@@ -112,13 +112,13 @@ export const index =
 				pipe(
 					as,
 					ReadonlyArray.findFirstIndex((an) => an === a),
-					Either.fromOption(() => ParseResult.type(ast, a, 'Not an allowed value'))
+					Either.fromOption(() => new ParseResult.Type(ast, a, 'Not an allowed value'))
 				),
 			(n, _, ast) =>
 				pipe(
 					as,
 					ReadonlyArray.get(n),
-					Either.fromOption(() => ParseResult.type(ast, n, 'Not an allowed value'))
+					Either.fromOption(() => new ParseResult.Type(ast, n, 'Not an allowed value'))
 				)
 		);
 
@@ -162,9 +162,9 @@ export const entriesToRecordOrFailWith = <A, R1, R2>(
 		(arr, _, ast) =>
 			pipe(
 				arr,
-				MReadonlyRecord.fromIterableWith(Function.identity),
-				Either.mapLeft(([key, pos]) =>
-					ParseResult.type(ast, arr, `${message}: ${String(key)} at position ${pos + 1}`)
+				MreadonlyRecord.fromIterableWith(Function.identity),
+				Either.mapLeft(
+					([key, pos]) => new ParseResult.Type(ast, arr, `${message}: ${String(key)} at position ${pos + 1}`)
 				)
 			),
 		(record) => pipe(record, ReadonlyArray.fromRecord<string, A>, ParseResult.succeed)
@@ -199,7 +199,7 @@ export const structify = <A, I, R>(
 	pipe(
 		schema,
 		Schema.transform(
-			Schema.struct({ a: Schema.to(schema) }),
+			Schema.struct({ a: Schema.typeSchema(schema) }),
 			(v) => ({ a: v }),
 			(v) => v.a
 		)

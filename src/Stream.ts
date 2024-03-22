@@ -1,4 +1,4 @@
-import { MEither } from '#mjljm/effect-lib/index';
+import { Meither } from '#src/internal/index';
 import { Chunk, Data, Effect, ReadonlyArray, Stream, Tuple, pipe } from 'effect';
 
 export class StreamContentError extends Data.TaggedError('StreamContentError')<{
@@ -29,7 +29,7 @@ export const ExtractNBytes =
 				ReadonlyArray.fromIterable,
 				ReadonlyArray.flatten,
 				ReadonlyArray.splitAt(n),
-				MEither.liftPredicate(
+				Meither.liftPredicate(
 					([iv]) => iv.length >= n,
 					() =>
 						new StreamContentError({

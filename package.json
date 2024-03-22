@@ -10,7 +10,7 @@
 		}
 	},
 	"imports": {
-		"#mjljm/effect-lib/*": {
+		"#src/*": {
 			"import": "./src/*.ts"
 		}
 	},
@@ -48,9 +48,9 @@
 		"clean-pnpm-cache": "rimraf node_modules"
 	},
 	"dependencies": {
-		"@effect/schema": "0.64.10",
-		"@effect/typeclass": "0.23.10",
+		"@effect/schema": "0.64.11",
+		"@effect/typeclass": "0.23.11",
 		"@mjljm/js-lib": "workspace:*",
-		"effect": "2.4.10"
+		"effect": "2.4.11"
 	}
 }

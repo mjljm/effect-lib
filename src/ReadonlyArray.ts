@@ -1,4 +1,4 @@
-import { MBadArgumentError, MEither, MFunction } from '#mjljm/effect-lib/index';
+import { MbadArgumentError, Meither, Mfunction } from '#src/internal/index';
 import {
 	Either,
 	Equal,
@@ -24,7 +24,7 @@ const moduleTag = '@mjljm/effect-lib/ReadonlyArray/';
 export const hasDuplicatesWith =
 	<A>(isEquivalent: (self: NoInfer<A>, that: NoInfer<A>) => boolean) =>
 	(self: ReadonlyArray<A>): boolean =>
-		pipe(self, ReadonlyArray.dedupeWith(isEquivalent), ReadonlyArray.length, MFunction.strictEquals(self.length));
+		pipe(self, ReadonlyArray.dedupeWith(isEquivalent), ReadonlyArray.length, Mfunction.strictEquals(self.length));
 
 /**
  * Returns true if the provided ReadonlyArray contains duplicates
@@ -58,7 +58,7 @@ export const getSingletonOrFailsWith =
 	<A>(self: ReadonlyArray<A>): Either.Either<Option.Option<A>, B> =>
 		pipe(
 			self,
-			MEither.liftPredicate(flow(ReadonlyArray.length, Number.lessThanOrEqualTo(1)), error),
+			Meither.liftPredicate(flow(ReadonlyArray.length, Number.lessThanOrEqualTo(1)), error),
 			Either.map(ReadonlyArray.get(0))
 		);
 
@@ -150,15 +150,6 @@ export const extractFirst: {
 		);
 
 /**
- * Unsafe get an element from an array. No bounds check, Faster than the Readonly version
- */
-export const unsafeGet =
-	(index: number) =>
-	<A>(self: ReadonlyArray<A>): A =>
-		// @ts-expect-error getting array content unsafely
-		self[index];
-
-/**
  * Runs a validation function f on an array of A's. Returns a right of the array if all elements of the array pass the validation. Returns a left of the array of the elements that don't pass the validation otherwise
  */
 export const validateAll =
@@ -188,14 +179,14 @@ export const fromIndexedFlattened =
 	(size: number) =>
 	<A>(
 		self: ReadonlyArray<[number, A]>
-	): Either.Either<ReadonlyArray<ReadonlyArray<A>>, MBadArgumentError.OutOfRange> =>
+	): Either.Either<ReadonlyArray<ReadonlyArray<A>>, MbadArgumentError.OutOfRange> =>
 		Either.gen(function* (_) {
 			const out = ReadonlyArray.makeBy(size, () => ReadonlyArray.empty<A>());
 			for (let i = 0; i < self.length; i++) {
 				const [index, value] = self[i] as [number, A];
 				const checkedIndex = yield* _(
 					index,
-					MBadArgumentError.checkRange({
+					MbadArgumentError.checkRange({
 						id: 'self',
 						position: i,
 						moduleTag,
@@ -216,14 +207,14 @@ export const fromUniqueIndexedFlattened =
 	(size: number) =>
 	<A>(
 		self: ReadonlyArray<[number, A]>
-	): Either.Either<ReadonlyArray<Option.Option<A>>, MBadArgumentError.OutOfRange | MBadArgumentError.TooMany<A>> =>
+	): Either.Either<ReadonlyArray<Option.Option<A>>, MbadArgumentError.OutOfRange | MbadArgumentError.TooMany<A>> =>
 		Either.gen(function* (_) {
 			const out = ReadonlyArray.makeBy(size, () => Option.none<A>());
 			for (let i = 0; i < self.length; i++) {
 				const [index, value] = self[i] as [number, A];
 				const checkedIndex = yield* _(
 					index,
-					MBadArgumentError.checkRange({
+					MbadArgumentError.checkRange({
 						id: 'self',
 						position: i,
 						moduleTag,
@@ -236,10 +227,14 @@ export const fromUniqueIndexedFlattened =
 				out[checkedIndex] = Option.some(
 					yield* _(
 						value,
-						MEither.liftOptionalPredicate(
-							(value) => Option.filter(out[checkedIndex] as Option.Option<A>, Predicate.not(Equal.equals(value))),
+						Meither.liftOptionalPredicate(
+							flow(
+								Mfunction.isEquivalentTo,
+								Predicate.not,
+								Mfunction.flipDual(Option.filter<A>)(out[checkedIndex] as Option.Option<A>)
+							),
 							(newValue, previousValue) =>
-								new MBadArgumentError.TooMany({
+								new MbadArgumentError.TooMany({
 									id: 'self',
 									position: i,
 									moduleTag,
@@ -285,3 +280,5 @@ export const groupByInMap =
 			}
 		});
 	};
+
+export * from '#src/internal/readonlyArray';

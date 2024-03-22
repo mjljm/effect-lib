@@ -1,5 +1,5 @@
-import * as MReadonlyArray from '#mjljm/effect-lib/ReadonlyArray';
-import { Option, String } from 'effect';
+import { Meither } from '#src/internal/index';
+import { Cause, Either, Function, Option, String, pipe } from 'effect';
 
 /**
  * Constructor that returns a Some of type Option.Some
@@ -20,12 +20,19 @@ export const fromString = (s: string): Option.Option<string> =>
 	String.isEmpty(s) ? Option.none() : Option.some(s);
 
 /**
- * Converts an array into an `Option`. If the array contains a single element, returns this element wrapped in a `Some`, otherwise returns `None`.
- *
- * @category conversions
+ * Flattens two options into a single one
  */
-export const fromSingleton = <A>(as: ReadonlyArray<A>): Option.Option<A> => MReadonlyArray.getSingleton(as);
+export const flatten: <A>(self: Option.Option<Option.Option<A>>) => Option.Option<A> = Option.flatMap(
+	Function.identity
+);
 
+export const traverseEither = <R, L>(o: Option.Option<Either.Either<R, L>>): Either.Either<Option.Option<R>, L> =>
+	pipe(
+		o,
+		Either.fromOption(() => new Cause.NoSuchElementException()),
+		Meither.flatten,
+		Meither.optionFromOptional
+	);
 /**
  * Semigroup for options that returns a some only if there is one and one only some
  * in the list to concatenate
