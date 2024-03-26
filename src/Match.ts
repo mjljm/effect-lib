@@ -1,8 +1,8 @@
-import { Mfunction } from '#src/internal/index';
+import * as MFunction from '#src/Function';
 
-export const primitive = Mfunction.isPrimitive;
-const isFunction = Mfunction.isFunction;
+export const primitive = MFunction.isPrimitive;
+const isFunction = MFunction.isFunction;
 export { isFunction as function };
-export const array = Mfunction.isArray;
-export const recordOrArray = Mfunction.isRecordOrArray;
-export const url = Mfunction.isUrl;
+export const array = MFunction.isArray;
+export const recordOrArray = MFunction.isRecordOrArray;
+export const url = MFunction.isUrl;

@@ -1,4 +1,4 @@
-import { Meither } from '#src/internal/index';
+import * as MEither from '#src/Either';
 import { Chunk, Data, Effect, ReadonlyArray, Stream, Tuple, pipe } from 'effect';
 
 export class StreamContentError extends Data.TaggedError('StreamContentError')<{
@@ -29,7 +29,7 @@ export const ExtractNBytes =
 				ReadonlyArray.fromIterable,
 				ReadonlyArray.flatten,
 				ReadonlyArray.splitAt(n),
-				Meither.liftPredicate(
+				MEither.liftPredicate(
 					([iv]) => iv.length >= n,
 					() =>
 						new StreamContentError({

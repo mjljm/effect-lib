@@ -1,4 +1,5 @@
 export * as MBadArgumentError from '#src/BadArgumentError';
+export * as MCauyse from '#src/Cause';
 export * as MChunk from '#src/Chunk';
 export * as MEffect from '#src/Effect';
 export * as MEither from '#src/Either';

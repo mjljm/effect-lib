@@ -1,5 +1,4 @@
-import { Meither } from '#src/internal/index';
-import { Cause, Either, Function, Option, String, pipe } from 'effect';
+import { Either, Function, Option, String, flow } from 'effect';
 
 /**
  * Constructor that returns a Some of type Option.Some
@@ -27,12 +26,11 @@ export const flatten: <A>(self: Option.Option<Option.Option<A>>) => Option.Optio
 );
 
 export const traverseEither = <R, L>(o: Option.Option<Either.Either<R, L>>): Either.Either<Option.Option<R>, L> =>
-	pipe(
-		o,
-		Either.fromOption(() => new Cause.NoSuchElementException()),
-		Meither.flatten,
-		Meither.optionFromOptional
-	);
+	Option.match(o, {
+		onNone: () => Either.right(Option.none()),
+		onSome: Either.match({ onLeft: Either.left, onRight: flow(Option.some, Either.right) })
+	});
+
 /**
  * Semigroup for options that returns a some only if there is one and one only some
  * in the list to concatenate

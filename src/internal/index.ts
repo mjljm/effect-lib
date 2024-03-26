@@ -1,9 +1,0 @@
-export * as MbadArgumentError from '#src/internal/badArgumentError';
-export * as common from '#src/internal/common';
-export * as Meither from '#src/internal/either';
-export * as MeqValue from '#src/internal/eqValue';
-export * as Mfunction from '#src/internal/function';
-export * as MfunctionPortError from '#src/internal/functionPortError';
-export * as MreadonlyArray from '#src/internal/readonlyArray';
-export * as MreadonlyRecord from '#src/internal/readonlyRecord';
-export * as Mtuple from '#src/internal/tuple';

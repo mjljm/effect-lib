@@ -1,4 +1,4 @@
-import { Mfunction } from '#src/internal/index';
+import * as MFunction from '#src/Function';
 import { Function, Option, Order, ReadonlyArray, String, Tuple, pipe } from 'effect';
 
 //const moduleTag = '@mjljm/effect-lib/String/';
@@ -12,7 +12,7 @@ export interface SearchResult {
 	readonly match: string;
 }
 
-export const SearchResult = Mfunction.make<SearchResult>;
+export const SearchResult = MFunction.make<SearchResult>;
 export const searchResultByStartIndex = Order.mapInput(
 	Order.number,
 	(searchResult: SearchResult) => searchResult.startIndex
@@ -122,16 +122,16 @@ export const takeRightFrom =
  * @param obj
  * @returns
  */
-export const tryToStringToJson = (obj: Mfunction.Record): Option.Option<string> => {
-	const tryApplyingFOnObj = (f: Mfunction.Function) => {
+export const tryToStringToJson = (obj: MFunction.Record): Option.Option<string> => {
+	const tryApplyingFOnObj = (f: MFunction.Function) => {
 		try {
-			return pipe(obj, f.apply, Option.liftPredicate(Mfunction.isString));
+			return pipe(obj, f.apply, Option.liftPredicate(MFunction.isString));
 		} catch (e) {
 			return Option.none();
 		}
 	};
 	const safeApply = (f: unknown): Option.Option<string> =>
-		pipe(f, Option.liftPredicate(Mfunction.isFunction), Option.flatMap(tryApplyingFOnObj)) as never;
+		pipe(f, Option.liftPredicate(MFunction.isFunction), Option.flatMap(tryApplyingFOnObj));
 	return pipe(
 		obj['toString'],
 		Option.liftPredicate((toString) => toString !== Object.prototype.toString),

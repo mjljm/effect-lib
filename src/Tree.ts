@@ -1,4 +1,5 @@
-import { Mfunction, MreadonlyArray } from '#src/internal/index';
+import * as MFunction from '#src/Function';
+import * as MReadonlyArray from '#src/ReadonlyArray';
 import { Monoid } from '@effect/typeclass';
 import { Equal, Equivalence, Function, HashSet, ReadonlyArray, pipe } from 'effect';
 
@@ -26,7 +27,7 @@ export type Infer<T extends Tree<unknown>> = T extends Tree<infer A> ? A : never
 /**
  * @category constructor
  */
-const Tree = <A>(fa: Tree<A>) => Mfunction.make<Tree<A>>(fa);
+const Tree = <A>(fa: Tree<A>) => MFunction.make<Tree<A>>(fa);
 
 /**
  * Build a (possibly infinite) tree from a seed value.
@@ -89,7 +90,7 @@ export const unfold = <B, A>({
 
 	// The cache is destroyed with this object. So it is necessarily cleaned on function exit even if it throws
 	const cachedInternalUnfold = memoize
-		? Mfunction.memoize(Infinity)(
+		? MFunction.memoize(Infinity)(
 				internalUnfold,
 				Equivalence.make((self, that) => Equal.equals(self.currentSeed, that.currentSeed))
 			)
@@ -222,7 +223,7 @@ export const reduce =
 				let r: B = f(b, self.value, level);
 				const len = self.forest.length;
 				for (let i = 0; i < len; i++) {
-					r = pipe(self.forest, MreadonlyArray.unsafeGet(i), go(r, level + 1));
+					r = pipe(self.forest, MReadonlyArray.unsafeGet(i), go(r, level + 1));
 				}
 				return r;
 			};
@@ -254,7 +255,7 @@ export const reduceRight =
 				let r: B = f(b, self.value, level);
 				const len = self.forest.length;
 				for (let i = len - 1; i >= 0; i--) {
-					r = pipe(self.forest, MreadonlyArray.unsafeGet(i), go(r, level + 1));
+					r = pipe(self.forest, MReadonlyArray.unsafeGet(i), go(r, level + 1));
 				}
 				return r;
 			};

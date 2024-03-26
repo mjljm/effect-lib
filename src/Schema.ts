@@ -1,4 +1,3 @@
-import { MreadonlyRecord } from '#src/internal/index';
 import { ArrayFormatter, ParseResult, Schema } from '@effect/schema';
 import { JsRegExp } from '@mjljm/js-lib';
 
@@ -145,7 +144,7 @@ export const entriesToRecord = <A, R1, R2>(
 /**
  * Transforms a schema representing a ReadonlyArray<[K,V]> into a schema representing a Record<K,V>. An error will be raised if there are conflicting entries (same key, different value). The error message will start by message followed by colon ':' then the first duplicate key found and its position.
  */
-export const entriesToRecordOrFailWith = <A, R1, R2>(
+/*export const entriesToRecordOrFailWith = <A, R1, R2>(
 	key: Schema.Schema<string, string, R1>,
 	value: Schema.Schema<A, A, R2>,
 	message: string
@@ -168,7 +167,7 @@ export const entriesToRecordOrFailWith = <A, R1, R2>(
 				)
 			),
 		(record) => pipe(record, ReadonlyArray.fromRecord<string, A>, ParseResult.succeed)
-	);
+	);*/
 
 /**
  * Transforms a schema of an array in a schema of an array in which duplicates have been removed

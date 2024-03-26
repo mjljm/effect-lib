@@ -1,8 +1,7 @@
+import { JsPatches } from '@mjljm/js-lib';
 /**
  * Constructor
  */
-
-import { JsPatches } from '@mjljm/js-lib';
 
 export const unsafeIntFromString = (s: string): number => parseInt(s);
 
