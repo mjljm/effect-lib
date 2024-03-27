@@ -60,7 +60,7 @@ export const strictEquals =
 		self === that;
 
 /**
- * Curried equality between elements having the same type
+ * Curried equality between elements having the same type. Prefer using strictEquals for primitive types because it is faster
  */
 export const isEquivalentTo =
 	<A>(that: A) =>

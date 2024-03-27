@@ -46,8 +46,8 @@ export const findSingleton: {
  */
 
 export const findAll =
-	<B extends A, A = B>(predicate: Predicate.Predicate<A>) =>
-	(self: Iterable<B>): Array<number> =>
+	<A>(predicate: Predicate.Predicate<NoInfer<A>>) =>
+	(self: Iterable<A>): Array<number> =>
 		ReadonlyArray.filterMap(self, (b, i) =>
 			pipe(
 				i,
