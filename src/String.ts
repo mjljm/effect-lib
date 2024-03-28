@@ -229,9 +229,9 @@ export const replaceBetween = (replacement: string, startIndex: number, endIndex
 	self.substring(0, startIndex) + replacement + self.substring(endIndex);
 
 /**
- * RegExp exec called from a string
+ * A slightly different version of match using RegExp.prototype.exec instead of String.prototype.match because the result of the first does not depend on the g flag being set or not
  */
-export const applyRegExp =
+export const match =
 	(regexp: RegExp) =>
 	(self: string): Option.Option<RegExpExecArray> =>
 		pipe(regexp.exec(self), Option.fromNullable);

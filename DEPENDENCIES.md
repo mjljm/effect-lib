@@ -15,8 +15,8 @@ Json: MFunctionPortError
 MMatch: MFunction
 MEither: MCause, MTuple
 MStream: MEither
-MBadArgumentError: MEither, MFunction
 MReadonlyArray: MCause, MEither, MFunction
+MBadArgumentError: MEither, MFunction, MReadonlyArray, MString
 MTree: MFunction, MReadonlyArray
 
 import type
